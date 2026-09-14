@@ -1,99 +1,27 @@
 -- ============================================================
--- Rivals Modular -- Bootstrap
--- Wires config -> utils -> modules -> GUI -> render loop
+-- Rivals Modular -- Bootstrap (GitHub version)
 -- ============================================================
 
-if _G.__rivals_core then
-    warn("[rivals] core already initialized.")
-    return
-end
+if _G.__rivals_core then return end
 
-local CACHE_FOLDER = "RivalsModular"
+local REPO_BASE = "https://raw.githubusercontent.com/confessess/klzhbxciuawo6n7d908a6n7da9wnfv6dacnad8nzx7698vdb/main/src/"
 
-local function ensureFolder()
-    pcall(function()
-        if makefolder and not (isfolder and isfolder(CACHE_FOLDER)) then
-            makefolder(CACHE_FOLDER)
-        end
-    end)
-end
-
-local function writeFile(path, content)
-    pcall(function()
-        if writefile and content then
-            writefile(path, content)
-        end
-    end)
-end
-
-local function readFile(path)
+local function fetch(url)
     local result = nil
     pcall(function()
-        if isfile and isfile(path) then
-            result = readfile(path)
-        end
+        result = game:HttpGet(url)
     end)
-    if typeof(result) == "string" and result ~= "" then
+    if typeof(result) == "string" and #result > 10 and not result:find("<!DOCTYPE") then
         return result
     end
     return nil
 end
 
-local SRC_FILES = {
-    ["config"]   = [==[
-@@SRC:config@@
-]==],
-    ["utils"]    = [==[
-@@SRC:utils@@
-]==],
-    ["gui"]      = [==[
-@@SRC:gui@@
-]==],
-    ["esp"]      = [==[
-@@SRC:esp@@
-]==],
-    ["combat"]   = [==[
-@@SRC:combat@@
-]==],
-    ["skins"]    = [==[
-@@SRC:skins@@
-]==],
-    ["player"]   = [==[
-@@SRC:player@@
-]==],
-    ["world"]    = [==[
-@@SRC:world@@
-]==],
-    ["misc"]     = [==[
-@@SRC:misc@@
-]==],
-    ["teleport"] = [==[
-@@SRC:teleport@@
-]==],
-    ["queue"]    = [==[
-@@SRC:queue@@
-]==],
-}
-
-local function resolveSource(name)
-    local embedded = SRC_FILES[name]
-    if embedded and not embedded:match("^@@SRC:") then
-        return embedded
-    end
-    return readFile(CACHE_FOLDER .. "/src/" .. name .. ".lua")
-end
-
-ensureFolder()
-
-local queueSrc = resolveSource("queue")
-if queueSrc then
-    writeFile(CACHE_FOLDER .. "/src/queue.lua", queueSrc)
-end
-
 local function loadModule(name)
-    local code = resolveSource(name)
+    local url = REPO_BASE .. name .. ".lua"
+    local code = fetch(url)
     if not code then
-        warn("[rivals] missing module: " .. name)
+        warn("[rivals] failed to fetch: " .. name)
         return nil
     end
     local fn, err = loadstring(code)
@@ -110,11 +38,8 @@ local function loadModule(name)
 end
 
 local Core = {
-    Loaded        = true,
-    MenuOpen      = false,
-    Connections   = {},
-    CurrentTarget = nil,
-    Unloaded      = false,
+    Loaded = true, MenuOpen = false, Connections = {},
+    CurrentTarget = nil, Unloaded = false,
 }
 
 local function track(conn)
@@ -126,30 +51,16 @@ Core.Track = track
 function Core.Unload()
     if Core.Unloaded then return end
     Core.Unloaded = true
-    Core.Loaded   = false
-
     for _, c in ipairs(Core.Connections) do
         pcall(function() c:Disconnect() end)
     end
     table.clear(Core.Connections)
-
-    for _, name in ipairs({ "Teleport", "Misc", "World", "Player", "Skins", "Combat", "ESP", "GUI" }) do
+    for _, name in ipairs({"Teleport", "Misc", "World", "Player", "Skins", "Combat", "ESP", "GUI"}) do
         local mod = Core[name]
-        if mod and mod.Cleanup then
-            pcall(mod.Cleanup)
-        end
+        if mod and mod.Cleanup then pcall(mod.Cleanup) end
     end
-
-    pcall(function()
-        if writefile then
-            writeFile(CACHE_FOLDER .. "/src/queue.lua", "-- killed")
-            writeFile(CACHE_FOLDER .. "/main.lua", "-- killed")
-        end
-    end)
-
-    _G.__rivals_modular_loaded = nil
+    _G.__rivals_loaded = nil
     _G.__rivals_core = nil
-    print("[rivals] unloaded cleanly.")
 end
 
 _G.__rivals_core = Core
@@ -165,42 +76,32 @@ Core.World    = loadModule("world")
 Core.Misc     = loadModule("misc")
 Core.Teleport = loadModule("teleport")
 
-local deps = {
-    Config = Core.Config,
-    Utils  = Core.Utils,
-    GUI    = Core.GUI,
-    Core   = Core,
-}
+local deps = { Config = Core.Config, Utils = Core.Utils, GUI = Core.GUI, Core = Core }
 
-for _, name in ipairs({ "Utils", "GUI", "ESP", "Combat", "Skins", "Player", "World", "Misc", "Teleport" }) do
+for _, name in ipairs({"Utils", "GUI", "ESP", "Combat", "Skins", "Player", "World", "Misc", "Teleport"}) do
     local mod = Core[name]
     if mod and mod.Init then
-        local ok, err = pcall(function() mod.Init(deps) end)
-        if not ok then
-            warn("[rivals/" .. name .. "] Init error: " .. tostring(err))
-        end
+        pcall(function() mod.Init(deps) end)
     end
 end
 
 local RunService = game:GetService("RunService")
 track(RunService.RenderStepped:Connect(function(dt)
     if Core.Unloaded then return end
-    if Core.ESP      and Core.ESP.Update      then pcall(Core.ESP.Update, dt)      end
-    if Core.Combat   and Core.Combat.Update   then pcall(Core.Combat.Update, dt)   end
-    if Core.Skins    and Core.Skins.Update    then pcall(Core.Skins.Update, dt)    end
-    if Core.Player   and Core.Player.Update   then pcall(Core.Player.Update, dt)   end
-    if Core.World    and Core.World.Update    then pcall(Core.World.Update, dt)    end
-    if Core.Misc     and Core.Misc.Update     then pcall(Core.Misc.Update, dt)     end
+    if Core.ESP and Core.ESP.Update then pcall(Core.ESP.Update, dt) end
+    if Core.Combat and Core.Combat.Update then pcall(Core.Combat.Update, dt) end
+    if Core.Skins and Core.Skins.Update then pcall(Core.Skins.Update, dt) end
+    if Core.Player and Core.Player.Update then pcall(Core.Player.Update, dt) end
+    if Core.World and Core.World.Update then pcall(Core.World.Update, dt) end
+    if Core.Misc and Core.Misc.Update then pcall(Core.Misc.Update, dt) end
     if Core.Teleport and Core.Teleport.Update then pcall(Core.Teleport.Update, dt) end
 end))
 
 task.spawn(function()
     while not Core.Unloaded do
         task.wait(0.15)
-        if Core.ESP and Core.ESP.Refresh then
-            pcall(Core.ESP.Refresh)
-        end
+        if Core.ESP and Core.ESP.Refresh then pcall(Core.ESP.Refresh) end
     end
 end)
 
-print("[rivals] modular base loaded. RightCtrl opens menu.")
+print("[rivals] loaded. RightCtrl opens menu.")
