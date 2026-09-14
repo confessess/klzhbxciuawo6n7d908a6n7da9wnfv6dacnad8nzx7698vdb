@@ -12,10 +12,6 @@ local GUI = {}
 
 local Config, Utils, Core
 
--- ------------------------------------------------------------
--- Theme
--- ------------------------------------------------------------
-
 local Theme = {
     Background   = Color3.fromRGB(10, 10, 14),
     Sidebar      = Color3.fromRGB(14, 14, 19),
@@ -34,10 +30,6 @@ local Theme = {
 local TWEEN_FAST = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_MED  = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
--- ------------------------------------------------------------
--- State
--- ------------------------------------------------------------
-
 local ScreenGui, MenuFrame, Sidebar, ContentHost, TitleBar
 local Watermark, MobileButton
 local Pages     = {}
@@ -49,10 +41,6 @@ local DragStart = nil
 local StartPos  = nil
 
 GUI._components = {}
-
--- ------------------------------------------------------------
--- Small helpers
--- ------------------------------------------------------------
 
 local function tween(obj, info, props)
     TweenService:Create(obj, info, props):Play()
@@ -84,10 +72,6 @@ local function makePadding(parent, l, t, r, b)
     return p
 end
 
--- ------------------------------------------------------------
--- Dragging
--- ------------------------------------------------------------
-
 local function initDragging()
     TitleBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -97,7 +81,6 @@ local function initDragging()
             StartPos  = MenuFrame.Position
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
         if Dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
             or input.UserInputType == Enum.UserInputType.Touch) then
@@ -108,7 +91,6 @@ local function initDragging()
             )
         end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1
             or input.UserInputType == Enum.UserInputType.Touch then
@@ -117,18 +99,12 @@ local function initDragging()
     end)
 end
 
--- ------------------------------------------------------------
--- Tab system
--- ------------------------------------------------------------
-
 local function switchTab(name)
     if ActiveTab == name then return end
     ActiveTab = name
-
     for tabName, page in pairs(Pages) do
         page.Visible = (tabName == name)
     end
-
     for _, child in ipairs(Sidebar:GetChildren()) do
         if child:IsA("TextButton") and child.Name:sub(1, 4) == "Tab_" then
             local lbl = child:FindFirstChild("Label")
@@ -168,9 +144,7 @@ local function createTab(name, order)
     lbl.TextXAlignment         = Enum.TextXAlignment.Left
     lbl.Parent                 = btn
 
-    btn.MouseButton1Click:Connect(function()
-        switchTab(name)
-    end)
+    btn.MouseButton1Click:Connect(function() switchTab(name) end)
 
     local page = Instance.new("ScrollingFrame")
     page.Name                   = "Page_" .. name
@@ -190,7 +164,6 @@ local function createTab(name, order)
     list.Parent    = page
 
     makePadding(page, 14, 14, 14, 14)
-
     Pages[name] = page
     return page
 end
@@ -198,10 +171,6 @@ end
 function GUI.GetPage(name)
     return Pages[name]
 end
-
--- ------------------------------------------------------------
--- Component: Section label
--- ------------------------------------------------------------
 
 function GUI.AddSection(page, text, order)
     local lbl = Instance.new("TextLabel")
@@ -216,10 +185,6 @@ function GUI.AddSection(page, text, order)
     lbl.Parent                 = page
     return lbl
 end
-
--- ------------------------------------------------------------
--- Component: Toggle
--- ------------------------------------------------------------
 
 function GUI.AddToggle(page, label, getState, setState, order)
     local btn = Instance.new("TextButton")
@@ -261,34 +226,21 @@ function GUI.AddToggle(page, label, getState, setState, order)
 
     local function updateVisual()
         local on = getState()
-        tween(track, TWEEN_FAST, {
-            BackgroundColor3 = on and Theme.Green or Theme.Stroke
-        })
-        tween(knob, TWEEN_FAST, {
-            Position = on and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
-        })
+        tween(track, TWEEN_FAST, { BackgroundColor3 = on and Theme.Green or Theme.Stroke })
+        tween(knob, TWEEN_FAST, { Position = on and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7) })
     end
 
     btn.MouseButton1Click:Connect(function()
         setState(not getState())
         updateVisual()
     end)
-
-    btn.MouseEnter:Connect(function()
-        tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover })
-    end)
-    btn.MouseLeave:Connect(function()
-        tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.Element })
-    end)
+    btn.MouseEnter:Connect(function() tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover }) end)
+    btn.MouseLeave:Connect(function() tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.Element }) end)
 
     updateVisual()
     table.insert(GUI._components, updateVisual)
     return btn, updateVisual
 end
-
--- ------------------------------------------------------------
--- Component: Slider
--- ------------------------------------------------------------
 
 function GUI.AddSlider(page, label, min, max, getValue, setValue, order)
     local wrapper = Instance.new("Frame")
@@ -360,60 +312,41 @@ function GUI.AddSlider(page, label, min, max, getValue, setValue, order)
         local alpha = rel / track.AbsoluteSize.X
         local raw   = min + alpha * (max - min)
         local snapped
-        if (max - min) <= 20 then
-            snapped = math.floor(raw + 0.5)
-        else
-            snapped = math.floor((raw + 2.5) / 5) * 5
-        end
+        if (max - min) <= 20 then snapped = math.floor(raw + 0.5)
+        else snapped = math.floor((raw + 2.5) / 5) * 5 end
         snapped = math.clamp(snapped, min, max)
         setValue(snapped)
         refresh()
     end
 
     handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
         end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch) then
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             setFromX(input.Position.X)
         end
     end)
-
     track.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             setFromX(input.Position.X)
             dragging = true
         end
     end)
-
-    wrapper.MouseEnter:Connect(function()
-        tween(wrapper, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover })
-    end)
-    wrapper.MouseLeave:Connect(function()
-        tween(wrapper, TWEEN_FAST, { BackgroundColor3 = Theme.Element })
-    end)
+    wrapper.MouseEnter:Connect(function() tween(wrapper, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover }) end)
+    wrapper.MouseLeave:Connect(function() tween(wrapper, TWEEN_FAST, { BackgroundColor3 = Theme.Element }) end)
 
     task.defer(refresh)
     table.insert(GUI._components, refresh)
     return wrapper, refresh
 end
-
--- ------------------------------------------------------------
--- Component: Dropdown
--- ------------------------------------------------------------
 
 function GUI.AddDropdown(page, label, options, getValue, setValue, order)
     local wrapper = Instance.new("Frame")
@@ -482,7 +415,6 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
     listLayout.Padding   = UDim.new(0, 2)
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
     listLayout.Parent    = listFrame
-
     makePadding(listFrame, 4, 4, 4, 4)
 
     local expanded  = false
@@ -528,13 +460,8 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
                     end)
                 end
             end)
-
-            optBtn.MouseEnter:Connect(function()
-                tween(optBtn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover })
-            end)
-            optBtn.MouseLeave:Connect(function()
-                tween(optBtn, TWEEN_FAST, { BackgroundColor3 = Theme.Element })
-            end)
+            optBtn.MouseEnter:Connect(function() tween(optBtn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover }) end)
+            optBtn.MouseLeave:Connect(function() tween(optBtn, TWEEN_FAST, { BackgroundColor3 = Theme.Element }) end)
         end
     end
 
@@ -542,7 +469,6 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
         if animating then return end
         animating = true
         expanded  = not expanded
-
         if expanded then
             rebuild()
             listFrame.Visible = true
@@ -559,24 +485,26 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
             end)
         end
     end)
+    header.MouseEnter:Connect(function() tween(header, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover }) end)
+    header.MouseLeave:Connect(function() tween(header, TWEEN_FAST, { BackgroundColor3 = Theme.Element }) end)
 
-    header.MouseEnter:Connect(function()
-        tween(header, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover })
-    end)
-    header.MouseLeave:Connect(function()
-        tween(header, TWEEN_FAST, { BackgroundColor3 = Theme.Element })
-    end)
+    table.insert(GUI._components, function() valueLbl.Text = tostring(getValue() or "None") end)
 
-    table.insert(GUI._components, function()
-        valueLbl.Text = tostring(getValue() or "None")
-    end)
+    -- Return object with SetValues/SetValue for dynamic updates
+    local dropdownObj = {
+        SetValues = function(newOpts)
+            -- Store new options, rebuild if expanded
+            options = function() return newOpts end
+            if expanded then rebuild() end
+        end,
+        SetValue = function(val)
+            setValue(val)
+            valueLbl.Text = tostring(val)
+        end
+    }
 
-    return wrapper
+    return wrapper, dropdownObj
 end
-
--- ------------------------------------------------------------
--- Component: Keybind
--- ------------------------------------------------------------
 
 function GUI.AddKeybind(page, label, getKey, setKey, order)
     local btn = Instance.new("TextButton")
@@ -613,13 +541,11 @@ function GUI.AddKeybind(page, label, getKey, setKey, order)
     makeCorner(keyLbl, 6)
 
     local listening = false
-
     btn.MouseButton1Click:Connect(function()
         if listening then return end
         listening = true
         keyLbl.Text = "..."
         tween(keyLbl, TWEEN_FAST, { TextColor3 = Theme.Green })
-
         local conn
         conn = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -631,20 +557,10 @@ function GUI.AddKeybind(page, label, getKey, setKey, order)
             end
         end)
     end)
-
-    btn.MouseEnter:Connect(function()
-        tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover })
-    end)
-    btn.MouseLeave:Connect(function()
-        tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.Element })
-    end)
-
+    btn.MouseEnter:Connect(function() tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.ElementHover }) end)
+    btn.MouseLeave:Connect(function() tween(btn, TWEEN_FAST, { BackgroundColor3 = Theme.Element }) end)
     return btn
 end
-
--- ------------------------------------------------------------
--- Component: Button
--- ------------------------------------------------------------
 
 function GUI.AddButton(page, label, callback, order, isDanger)
     local btn = Instance.new("TextButton")
@@ -666,63 +582,33 @@ function GUI.AddButton(page, label, callback, order, isDanger)
     lbl.TextSize               = 13
     lbl.Parent                 = btn
 
-    btn.MouseButton1Click:Connect(function()
-        pcall(callback)
-    end)
-
-    btn.MouseEnter:Connect(function()
-        tween(btn, TWEEN_FAST, {
-            BackgroundColor3 = isDanger and Color3.fromRGB(160, 40, 40) or Theme.Accent
-        })
-    end)
-    btn.MouseLeave:Connect(function()
-        tween(btn, TWEEN_FAST, {
-            BackgroundColor3 = isDanger and Color3.fromRGB(120, 30, 30) or Theme.AccentDark
-        })
-    end)
-
+    btn.MouseButton1Click:Connect(function() pcall(callback) end)
+    btn.MouseEnter:Connect(function() tween(btn, TWEEN_FAST, { BackgroundColor3 = isDanger and Color3.fromRGB(160, 40, 40) or Theme.Accent }) end)
+    btn.MouseLeave:Connect(function() tween(btn, TWEEN_FAST, { BackgroundColor3 = isDanger and Color3.fromRGB(120, 30, 30) or Theme.AccentDark }) end)
     return btn
 end
-
--- ------------------------------------------------------------
--- Open / close
--- ------------------------------------------------------------
 
 local function setOpen(state)
     IsOpen = state
     if Core then Core.MenuOpen = state end
-
     if state then
         MenuFrame.Visible = true
         Watermark.Visible = true
         MenuFrame.Size    = UDim2.fromOffset(560, 0)
         tween(MenuFrame, TWEEN_MED, { Size = UDim2.fromOffset(560, 380) })
-        pcall(function()
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Tab, false, game)
-        end)
+        pcall(function() VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Tab, false, game) end)
     else
         tween(MenuFrame, TWEEN_MED, { Size = UDim2.fromOffset(560, 0) })
         task.delay(0.22, function()
             MenuFrame.Visible = false
             Watermark.Visible = false
         end)
-        pcall(function()
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Tab, false, game)
-        end)
+        pcall(function() VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Tab, false, game) end)
     end
 end
 
-function GUI.ToggleMenu()
-    setOpen(not IsOpen)
-end
-
-function GUI.IsOpen()
-    return IsOpen
-end
-
--- ------------------------------------------------------------
--- Build
--- ------------------------------------------------------------
+function GUI.ToggleMenu() setOpen(not IsOpen) end
+function GUI.IsOpen() return IsOpen end
 
 local function build()
     local playerGui = Utils.LocalPlayer:WaitForChild("PlayerGui")
@@ -815,9 +701,7 @@ local function build()
     closeLbl.TextSize               = 12
     closeLbl.Parent                 = closeBtn
 
-    closeBtn.MouseButton1Click:Connect(function()
-        setOpen(false)
-    end)
+    closeBtn.MouseButton1Click:Connect(function() setOpen(false) end)
     closeBtn.MouseEnter:Connect(function()
         tween(closeBtn, TWEEN_FAST, { BackgroundColor3 = Theme.Red })
         tween(closeLbl, TWEEN_FAST, { TextColor3 = Color3.fromRGB(255, 255, 255) })
@@ -841,7 +725,6 @@ local function build()
     sidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     sidebarLayout.VerticalAlignment   = Enum.VerticalAlignment.Top
     sidebarLayout.Parent              = Sidebar
-
     makePadding(Sidebar, 0, 10, 0, 10)
 
     ContentHost = Instance.new("Frame")
@@ -878,32 +761,19 @@ local function build()
         MobileButton.Parent           = ScreenGui
         makeCorner(MobileButton, 12)
         makeStroke(MobileButton, Theme.Stroke, 1, 0.2)
-
-        MobileButton.MouseButton1Click:Connect(function()
-            GUI.ToggleMenu()
-        end)
+        MobileButton.MouseButton1Click:Connect(function() GUI.ToggleMenu() end)
     end
 
     initDragging()
     switchTab("Legit")
 end
 
--- ------------------------------------------------------------
--- Keybind handling
--- ------------------------------------------------------------
-
 local function initKeybind()
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
-        if input.KeyCode == Keybind then
-            GUI.ToggleMenu()
-        end
+        if input.KeyCode == Keybind then GUI.ToggleMenu() end
     end)
 end
-
--- ------------------------------------------------------------
--- Lifecycle
--- ------------------------------------------------------------
 
 function GUI.Init(deps)
     Config = deps.Config
@@ -912,12 +782,8 @@ function GUI.Init(deps)
 
     local savedKey = Config.Get("MenuKeybind")
     if savedKey then
-        local ok, parsed = pcall(function()
-            return Enum.KeyCode[savedKey]
-        end)
-        if ok and parsed then
-            Keybind = parsed
-        end
+        local ok, parsed = pcall(function() return Enum.KeyCode[savedKey] end)
+        if ok and parsed then Keybind = parsed end
     end
 
     build()
@@ -925,20 +791,54 @@ function GUI.Init(deps)
 
     UserInputService.InputBegan:Connect(function(input)
         if not IsOpen then return end
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1
-            and input.UserInputType ~= Enum.UserInputType.Touch then
-            return
-        end
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
         local mfPos  = MenuFrame.AbsolutePosition
         local mfSize = MenuFrame.AbsoluteSize
         local x, y   = input.Position.X, input.Position.Y
-        local inside = x >= mfPos.X and x <= mfPos.X + mfSize.X
-            and y >= mfPos.Y and y <= mfPos.Y + mfSize.Y
-        if not inside then
-            setOpen(false)
-        end
+        local inside = x >= mfPos.X and x <= mfPos.X + mfSize.X and y >= mfPos.Y and y <= mfPos.Y + mfSize.Y
+        if not inside then setOpen(false) end
     end)
 
+    -- Register Visuals tab ESP controls
+    local visuals = Pages["Visuals"]
+    if visuals then
+        GUI.AddSection(visuals, "ESP", 1)
+        GUI.AddToggle(visuals, "Enabled",
+            function() return Config.Get("ESP_Enabled") end,
+            function(v) Config.Set("ESP_Enabled", v) end, 2)
+        GUI.AddToggle(visuals, "Highlight",
+            function() return Config.Get("ESP_Highlight") end,
+            function(v) Config.Set("ESP_Highlight", v) end, 3)
+        GUI.AddToggle(visuals, "Name",
+            function() return Config.Get("ESP_Name") end,
+            function(v) Config.Set("ESP_Name", v) end, 4)
+        GUI.AddToggle(visuals, "Distance",
+            function() return Config.Get("ESP_Studs") end,
+            function(v) Config.Set("ESP_Studs", v) end, 5)
+        GUI.AddToggle(visuals, "Tracer",
+            function() return Config.Get("ESP_Tracer") end,
+            function(v) Config.Set("ESP_Tracer", v) end, 6)
+        GUI.AddToggle(visuals, "Health Bar",
+            function() return Config.Get("ESP_HealthBar") end,
+            function(v) Config.Set("ESP_HealthBar", v) end, 7)
+        GUI.AddToggle(visuals, "Boxes",
+            function() return Config.Get("ESP_Boxes") end,
+            function(v) Config.Set("ESP_Boxes", v) end, 8)
+        GUI.AddToggle(visuals, "Box Filled",
+            function() return Config.Get("ESP_BoxFilled") end,
+            function(v) Config.Set("ESP_BoxFilled", v) end, 9)
+        GUI.AddToggle(visuals, "Team Check",
+            function() return Config.Get("ESP_TeamCheck") end,
+            function(v) Config.Set("ESP_TeamCheck", v) end, 10)
+        GUI.AddSlider(visuals, "Max Distance", 100, 2000,
+            function() return Config.Get("ESP_MaxDistance") end,
+            function(v) Config.Set("ESP_MaxDistance", v) end, 11)
+        GUI.AddSlider(visuals, "Box Transparency", 0, 100,
+            function() return math.floor((Config.Get("ESP_BoxTransparency") or 0.5) * 100) end,
+            function(v) Config.Set("ESP_BoxTransparency", v / 100) end, 12)
+    end
+
+    -- Settings tab
     local settings = Pages["Settings"]
     if settings then
         GUI.AddSection(settings, "Menu", 1)
@@ -949,21 +849,15 @@ function GUI.Init(deps)
                 Config.Set("MenuKeybind", tostring(k):gsub("Enum.KeyCode.", ""))
             end, 2)
         GUI.AddSection(settings, "Config", 3)
-        GUI.AddButton(settings, "Reset Config",
-            function() Config.Reset() end, 4, false)
-        GUI.AddButton(settings, "Unload Script",
-            function()
-                if Core and Core.Unload then Core.Unload() end
-            end, 5, true)
+        GUI.AddButton(settings, "Reset Config", function() Config.Reset() end, 4, false)
+        GUI.AddButton(settings, "Unload Script", function() if Core and Core.Unload then Core.Unload() end end, 5, true)
     end
 
     print("[rivals] GUI initialized.")
 end
 
 function GUI.Cleanup()
-    pcall(function()
-        if ScreenGui then ScreenGui:Destroy() end
-    end)
+    pcall(function() if ScreenGui then ScreenGui:Destroy() end end)
     Pages     = {}
     IsOpen    = false
     ActiveTab = nil

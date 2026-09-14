@@ -1,5 +1,5 @@
 -- ============================================================
--- Rivals Modular -- Skins (Exact ZYPHERION logic)
+-- Rivals Modular -- Skins (Fixed for our GUI)
 -- ============================================================
 
 local Skins = {}
@@ -7,12 +7,8 @@ local Skins = {}
 local Config, Utils, GUI, Core
 local Players, LocalPlayer, HttpService
 
--- EXACT weapon skins table from ZYPHERION
-local r146_0 = {
-    ["Assault Rifle"] = {
-        "AK-47", "AKEY-47", "Boneclaw Rifle", "AUG", "Phoenix Rifle",
-        "Gingerbread AUG", "Tommy Gun", "Keyper", "Hyper Sniper", "Pixel Sniper"
-    },
+local WEAPON_SKINS = {
+    ["Assault Rifle"] = {"AK-47", "AKEY-47", "Boneclaw Rifle", "AUG", "Phoenix Rifle", "Gingerbread AUG", "Tommy Gun", "Keyper", "Hyper Sniper", "Pixel Sniper"},
     ["Battle Axe"] = {"The Shred", "Nordic Axe", "Ban Axe"},
     ["Bow"] = {"Bat Bow"},
     ["Burst Rifle"] = {"Aqua Burst", "Electro Rifle", "Pixel Burst", "Pine Burst", "Spectral Burst"},
@@ -53,182 +49,179 @@ local r146_0 = {
     ["War Horn"] = {"Trumpet", "Mammoth Horn"},
 }
 
--- EXACT state variables from ZYPHERION
-local r147_0 = {}  -- SaveOriginalGunsNeg cache
-local r148_0 = {}  -- Applied skins tracker
-local r149_0 = game:GetService("Players").LocalPlayer.Name
-local r150_0 = {}  -- Selected skins
-local r151_0 = nil -- Weapons folder
-local r152_0 = {}  -- Skin cases
-local r153_0 = {}  -- Methods table
+local originalGuns = {}
+local appliedSkins = {}
+local selectedSkins = {}
+local skinCases = {}
+local weaponsFolder = nil
+local wrapConfig = {}
+local wrapWeapons = {}
+local wrapList = {}
 
--- EXACT methods from ZYPHERION
-r153_0["SaveOriginalGunsNeg"] = function(r0_51, r1_51)
-    if r1_51 and not r147_0[r1_51.Name] then
-        r147_0[r1_51.Name] = {}
-        for r5_51, r6_51 in pairs(r1_51:GetChildren()) do
-            table.insert(r147_0[r1_51.Name], r6_51:Clone())
-        end
-    end
-end
+local SKINS_FILE = "RivalsModular/WeaponSkins.json"
+local WRAPS_FILE = "RivalsModular/WrapChanger.json"
 
-r153_0["PutBackOriginal"] = function(r0_163, r1_163)
-    if r1_163 and r147_0[r1_163.Name] then
-        r1_163:ClearAllChildren()
-        for r5_163, r6_163 in pairs(r147_0[r1_163.Name]) do
-            r6_163.Parent = r1_163
-        end
-        r147_0[r1_163.Name] = nil
-    end
-end
-
-r153_0["swapWeaponSkins"] = function(r0_22, r1_22, r2_22, r3_22)
-    if not r1_22 then return end
-    local r4_22 = r151_0:FindFirstChild(r1_22)
-    if not r4_22 then return end
-    if r3_22 then
-        if r2_22 then
-            local r5_22 = nil
-            for r9_22, r10_22 in pairs(r152_0) do
-                if r10_22:FindFirstChild(r2_22) then
-                    r5_22 = r10_22
-                    break
-                end
-            end
-            if r5_22 then
-                local r6_22 = r5_22:FindFirstChild(r2_22)
-                if not r6_22 then return end
-                r0_22:SaveOriginalGunsNeg(r4_22)
-                r4_22:ClearAllChildren()
-                for r10_22, r11_22 in pairs(r6_22:GetChildren()) do
-                    r11_22:Clone().Parent = r4_22
-                end
-                r148_0[r1_22] = true
-            end
-        end
-    else
-        r0_22:PutBackOriginal(r4_22)
-        r148_0[r1_22] = nil
-    end
-end
-
--- EXACT save/load from ZYPHERION
-local r159_0 = "RivalsModular/WeaponSkins.json"
-
-r153_0["saveSettings"] = function(r0_27)
-    writefile(r159_0, HttpService:JSONEncode({
-        selectedSkins = r150_0
-    }))
-end
-
-r153_0["loadSettings"] = function(r0_108)
-    local r1_108, r2_108 = pcall(function()
-        return HttpService:JSONDecode(readfile(r159_0))
+local function getWeaponsFolder()
+    if weaponsFolder then return weaponsFolder end
+    local ok, result = pcall(function()
+        return LocalPlayer.PlayerScripts.Assets.ViewModels.Weapons
     end)
-    if r1_108 and r2_108 then
-        r150_0 = r2_108.selectedSkins or {}
-        -- Reapply saved skins
-        for r3_2, r4_2 in pairs(r150_0) do
-            if r146_0[r3_2] and table.find(r146_0[r3_2], r4_2) then
-                r153_0:swapWeaponSkins(r3_2, r4_2, true)
-            end
+    if ok then weaponsFolder = result end
+    return weaponsFolder
+end
+
+local function getSkinCases()
+    if #skinCases > 0 then return skinCases end
+    local viewModels = LocalPlayer.PlayerScripts.Assets.ViewModels
+    local names = {"Spooky Skin Case", "Skin Case 2", "Skin Case 3", "Skin Case", "Other", "Festive Skin Case"}
+    for _, name in ipairs(names) do
+        local ok, case = pcall(function() return viewModels:FindFirstChild(name) end)
+        if ok and case then table.insert(skinCases, case) end
+    end
+    return skinCases
+end
+
+local function saveOriginal(weaponName)
+    local folder = getWeaponsFolder()
+    if not folder then return end
+    local weapon = folder:FindFirstChild(weaponName)
+    if not weapon then return end
+    if not originalGuns[weaponName] then
+        originalGuns[weaponName] = {}
+        for _, child in pairs(weapon:GetChildren()) do
+            table.insert(originalGuns[weaponName], child:Clone())
         end
     end
 end
 
--- EXACT reapply function from ZYPHERION
-local function r154_0()
-    for r3_2, r4_2 in pairs(r150_0) do
-        if r146_0[r3_2] and table.find(r146_0[r3_2], r4_2) then
-            r153_0:swapWeaponSkins(r3_2, r4_2, true)
+local function restoreOriginal(weaponName)
+    local folder = getWeaponsFolder()
+    if not folder then return end
+    local weapon = folder:FindFirstChild(weaponName)
+    if not weapon then return end
+    if originalGuns[weaponName] then
+        weapon:ClearAllChildren()
+        for _, child in pairs(originalGuns[weaponName]) do
+            child.Parent = weapon
         end
+        originalGuns[weaponName] = nil
     end
 end
 
--- ------------------------------------------------------------
--- Wrap Changer (EXACT from ZYPHERION)
--- ------------------------------------------------------------
+local function applySkin(weaponName, skinName)
+    local folder = getWeaponsFolder()
+    if not folder then return end
+    local weapon = folder:FindFirstChild(weaponName)
+    if not weapon then return end
 
-local r160_0 = "RivalsModular/WrapChangerConfig"
-local r161_0 = nil
-local r162_0 = nil
-local r163_0 = {
-    ["Spooky Skin Case"] = true,
-    ["Skin Case 2"] = true,
-    ["Skin Case"] = true,
-    ["Other"] = true,
-    ["Festive Skin Case"] = true
-}
-local r164_0 = {""}
-local r165_0 = r164_0[1]
-local r166_0 = ""
-local r167_0 = {}
-local r168_0 = {}
-
-local function r169_0(r0_119)
-    for r4_119, r5_119 in ipairs(r0_119:GetDescendants()) do
-        if r5_119:IsA("BasePart") and r5_119.Transparency == 1 then
-            invisPart = r5_119
-            table.insert(r167_0, invisPart)
-        end
+    local skinModel = nil
+    for _, case in ipairs(getSkinCases()) do
+        local found = case:FindFirstChild(skinName)
+        if found then skinModel = found break end
     end
+    if not skinModel then return end
+
+    saveOriginal(weaponName)
+    weapon:ClearAllChildren()
+    for _, child in pairs(skinModel:GetChildren()) do
+        child:Clone().Parent = weapon
+    end
+    appliedSkins[weaponName] = true
 end
 
-local function r170_0(r0_24)
-    for r4_24, r5_24 in ipairs(r0_24:GetDescendants()) do
-        if r5_24:IsA("BasePart") then
-            for r9_24, r10_24 in ipairs(r5_24:GetChildren()) do
-                if r10_24:IsA("Texture") then
-                    r10_24:Destroy()
+local function saveSettings()
+    pcall(function()
+        if writefile then writefile(SKINS_FILE, HttpService:JSONEncode({selectedSkins = selectedSkins})) end
+    end)
+end
+
+local function loadSettings()
+    pcall(function()
+        if isfile and isfile(SKINS_FILE) then
+            local data = HttpService:JSONDecode(readfile(SKINS_FILE))
+            if data and data.selectedSkins then
+                selectedSkins = data.selectedSkins
+                for weapon, skin in pairs(selectedSkins) do
+                    if WEAPON_SKINS[weapon] and table.find(WEAPON_SKINS[weapon], skin) then
+                        applySkin(weapon, skin)
+                    end
                 end
             end
         end
-    end
+    end)
 end
 
-local function r171_0(r0_47, r1_47)
-    local r2_47 = LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(r1_47)
-    if r2_47 then
-        for r6_47, r7_47 in ipairs(r2_47:GetChildren()) do
-            if r7_47:IsA("Texture") then
-                for r11_47, r12_47 in ipairs(r0_47:GetDescendants()) do
-                    if r12_47:IsA("BasePart") and r12_47 ~= invisPart then
-                        r7_47:Clone().Parent = r12_47
+-- Wrap changer
+local function getWrapWeapons()
+    if #wrapWeapons > 0 then return wrapWeapons end
+    local folder = getWeaponsFolder()
+    if not folder then return wrapWeapons end
+    local skip = {["Spooky Skin Case"] = true, ["Skin Case 2"] = true, ["Skin Case"] = true, ["Other"] = true, ["Festive Skin Case"] = true}
+    for _, child in ipairs(folder:GetChildren()) do
+        if not skip[child.Name] then table.insert(wrapWeapons, child.Name) end
+    end
+    table.sort(wrapWeapons, function(a, b) return a:lower() < b:lower() end)
+    return wrapWeapons
+end
+
+local function getWrapList()
+    if #wrapList > 0 then return wrapList end
+    local ok, wraps = pcall(function() return LocalPlayer.PlayerScripts.Assets.WrapTextures:GetChildren() end)
+    if ok and wraps then
+        for _, wrap in ipairs(wraps) do table.insert(wrapList, wrap.Name) end
+        table.sort(wrapList, function(a, b) return a:lower() < b:lower() end)
+    end
+    return wrapList
+end
+
+local function applyWrap(weaponName, wrapName)
+    local folder = getWeaponsFolder()
+    if not folder then return end
+    local weapon = folder:FindFirstChild(weaponName)
+    if not weapon then return end
+
+    for _, desc in ipairs(weapon:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            for _, child in ipairs(desc:GetChildren()) do
+                if child:IsA("Texture") then child:Destroy() end
+            end
+        end
+    end
+
+    if wrapName ~= "none" then
+        local ok, wrapFolder = pcall(function() return LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName) end)
+        if ok and wrapFolder then
+            for _, tex in ipairs(wrapFolder:GetChildren()) do
+                if tex:IsA("Texture") then
+                    for _, desc in ipairs(weapon:GetDescendants()) do
+                        if desc:IsA("BasePart") then tex:Clone().Parent = desc end
                     end
                 end
             end
         end
     end
+    wrapConfig[weaponName] = wrapName
 end
 
-local r172_0 = nil
-local r173_0 = {"none"}
-
-local function r174_0()
-    writefile(r160_0 .. ".json", HttpService:JSONEncode(r168_0))
+local function saveWrapSettings()
+    pcall(function()
+        if writefile then writefile(WRAPS_FILE, HttpService:JSONEncode(wrapConfig)) end
+    end)
 end
 
-local function r175_0()
-    if isfile(r160_0 .. ".json") then
-        r168_0 = HttpService:JSONDecode(readfile(r160_0 .. ".json"))
-        for r3_95, r4_95 in pairs(r168_0) do
-            local r5_95 = r161_0:FindFirstChild(r3_95)
-            if r5_95 then
-                r169_0(r5_95)
-                r170_0(r5_95)
-                r171_0(r5_95, r4_95)
+local function loadWrapSettings()
+    pcall(function()
+        if isfile and isfile(WRAPS_FILE) then
+            local data = HttpService:JSONDecode(readfile(WRAPS_FILE))
+            if data then
+                wrapConfig = data
+                for weapon, wrap in pairs(wrapConfig) do applyWrap(weapon, wrap) end
             end
         end
-    end
+    end)
 end
 
--- ------------------------------------------------------------
--- Init
--- ------------------------------------------------------------
-
-function Skins.Update(_dt)
-    -- Event-driven, no per-frame work
-end
+function Skins.Update(_dt) end
 
 function Skins.Init(deps)
     Config = deps.Config
@@ -239,148 +232,106 @@ function Skins.Init(deps)
     LocalPlayer = Utils.LocalPlayer
     HttpService = game:GetService("HttpService")
 
-    -- EXACT initialization from ZYPHERION
-    r151_0 = LocalPlayer["PlayerScripts"]["Assets"]["ViewModels"]["Weapons"]
-    r161_0 = r151_0
-
-    r152_0 = {
-        ["Spooky Skin Case"] = LocalPlayer["PlayerScripts"]["Assets"]["ViewModels"]["Spooky Skin Case"],
-        ["Skin Case 2"] = LocalPlayer["PlayerScripts"]["Assets"]["ViewModels"]["Skin Case 2"],
-        ["Skin Case 3"] = LocalPlayer["PlayerScripts"]["Assets"]["ViewModels"]["Skin Case 3"],
-        ["Skin Case"] = LocalPlayer["PlayerScripts"]["Assets"]["ViewModels"]["Skin Case"],
-        ["Other"] = LocalPlayer["PlayerScripts"]["Assets"]["ViewModels"]["Other"],
-        ["Festive Skin Case"] = LocalPlayer["PlayerScripts"]["Assets"]["ViewModels"]["Festive Skin Case"]
-    }
-
-    -- Build wrap weapon list (EXACT from ZYPHERION)
-    r162_0 = r161_0:GetChildren()
-    for r168_0, r169_0 in ipairs(r162_0) do
-        if not r163_0[r169_0.Name] then
-            table.insert(r164_0, r169_0.Name)
-        end
-    end
-    table.sort(r164_0, function(r0_73, r1_73)
-        return r0_73:lower() < r1_73:lower()
-    end)
-
-    -- Build wrap list (EXACT from ZYPHERION)
-    r172_0 = LocalPlayer["PlayerScripts"]["Assets"]["WrapTextures"]:GetChildren()
-    for r177_0, r178_0 in ipairs(r172_0) do
-        table.insert(r173_0, r178_0.Name)
-    end
-    table.remove(r173_0, 1)
-    table.sort(r173_0, function(r0_96, r1_96)
-        return r0_96:lower() < r1_96:lower()
-    end)
-    table.insert(r173_0, 1, "none")
-
-    -- Load saved settings
     task.delay(1, function()
-        r153_0:loadSettings()
-        r175_0()
+        loadSettings()
+        loadWrapSettings()
     end)
 
-    -- Register GUI (EXACT structure from ZYPHERION)
     local page = GUI.GetPage and GUI.GetPage("Skins")
     if page then
-        local r155_0, r156_0, r157_0 = nil, nil, nil
+        local selectedWeapon = "None"
+        local selectedSkin = nil
+        local skinDropdown = nil
 
-        -- Weapon dropdown
+        -- Build weapon list
         local weaponList = {"None"}
-        for weapon, _ in pairs(r146_0) do
-            table.insert(weaponList, weapon)
-        end
+        for weapon, _ in pairs(WEAPON_SKINS) do table.insert(weaponList, weapon) end
         table.sort(weaponList)
 
         GUI.AddSection(page, "Skin Changer", 1)
 
+        -- Weapon dropdown
         GUI.AddDropdown(page, "Weapon",
             function() return weaponList end,
-            function() return r155_0 end,
-            function(r0_28)
-                r155_0 = r0_28
-                local r1_28 = r146_0[r0_28] or {}
-                if r157_0 then
-                    r157_0:SetValues(r1_28)
-                    r156_0 = r150_0[r155_0] or r1_28[1]
-                    r157_0:SetValue(r156_0)
-                    r153_0:swapWeaponSkins(r155_0, r156_0, true)
-                    r153_0:saveSettings()
+            function() return selectedWeapon end,
+            function(v)
+                selectedWeapon = v
+                if v ~= "None" and WEAPON_SKINS[v] then
+                    selectedSkin = selectedSkins[v] or WEAPON_SKINS[v][1]
+                    -- Update skin dropdown options
+                    if skinDropdown then
+                        skinDropdown:SetValues(WEAPON_SKINS[v])
+                        skinDropdown:SetValue(selectedSkin)
+                    end
+                    -- Auto apply
+                    selectedSkins[v] = selectedSkin
+                    applySkin(v, selectedSkin)
+                    saveSettings()
                 end
             end, 2)
 
-        -- Skin dropdown
-        r157_0 = GUI.AddDropdown(page, "Skin",
+        -- Skin dropdown (returns object with SetValues/SetValue)
+        local skinWrapper, skinObj = GUI.AddDropdown(page, "Skin",
             function()
-                if r155_0 and r146_0[r155_0] then
-                    return r146_0[r155_0]
+                if selectedWeapon ~= "None" and WEAPON_SKINS[selectedWeapon] then
+                    return WEAPON_SKINS[selectedWeapon]
                 end
-                return {"PlaceHolder"}
+                return {"Select a weapon first"}
             end,
-            function() return r156_0 end,
-            function(r0_161)
-                r150_0[r155_0] = r0_161
-                r156_0 = r0_161
-                r153_0:swapWeaponSkins(r155_0, r156_0, true)
-                r153_0:saveSettings()
+            function() return selectedSkin end,
+            function(v)
+                selectedSkin = v
+                if selectedWeapon ~= "None" then
+                    selectedSkins[selectedWeapon] = v
+                    applySkin(selectedWeapon, v)
+                    saveSettings()
+                end
             end, 3)
+        skinDropdown = skinObj
 
         -- Reset button
         GUI.AddButton(page, "Reset Skins",
             function()
-                for r3_pr154_0, r4_pr154_0 in pairs(r148_0) do
-                    local r5_pr154_0 = r151_0:FindFirstChild(r3_pr154_0)
-                    if r5_pr154_0 then
-                        r153_0:PutBackOriginal(r5_pr154_0)
-                    end
-                end
-                r148_0 = {}
-                r150_0 = {}
-                writefile(r159_0, HttpService:JSONEncode({selectedSkins = {}}))
-                for r3_pr154_0, r4_pr154_0 in pairs(r151_0:GetChildren()) do
-                    if r147_0[r4_pr154_0.Name] then
-                        r153_0:PutBackOriginal(r4_pr154_0)
-                    end
-                end
+                for weaponName, _ in pairs(appliedSkins) do restoreOriginal(weaponName) end
+                appliedSkins = {}
+                selectedSkins = {}
+                saveSettings()
             end, 4, true)
 
-        -- Wrap changer section
+        -- Wrap changer
         GUI.AddSection(page, "Wrap Changer", 5)
+        local wrapWeapon = "none"
+        local wrapName = "none"
 
         GUI.AddDropdown(page, "Weapon",
-            function() return r164_0 end,
-            function() return r165_0 end,
-            function(r0_173)
-                r165_0 = r0_173
-                local r1_173 = r161_0:FindFirstChild(r165_0)
-                if r1_173 then
-                    r169_0(r1_173)
-                end
-            end, 6)
+            function()
+                local list = {"none"}
+                for _, w in ipairs(getWrapWeapons()) do table.insert(list, w) end
+                return list
+            end,
+            function() return wrapWeapon end,
+            function(v) wrapWeapon = v end, 6)
 
         GUI.AddDropdown(page, "Wrap",
-            function() return r173_0 end,
-            function() return r166_0 end,
-            function(r0_98)
-                r166_0 = r0_98
-                local r1_98 = r161_0:FindFirstChild(r165_0)
-                if r1_98 then
-                    r170_0(r1_98)
-                    r171_0(r1_98, r166_0)
-                    r168_0[r165_0] = r166_0
-                    r174_0()
+            function()
+                local list = {"none"}
+                for _, w in ipairs(getWrapList()) do table.insert(list, w) end
+                return list
+            end,
+            function() return wrapName end,
+            function(v)
+                wrapName = v
+                if wrapWeapon ~= "none" then
+                    applyWrap(wrapWeapon, v)
+                    saveWrapSettings()
                 end
             end, 7)
 
         GUI.AddButton(page, "Clear All Wraps",
             function()
-                writefile(r160_0 .. ".json", HttpService:JSONEncode({wrapConfig = {}}))
-                for r3_pr6_1, r4_pr6_1 in ipairs(r164_0) do
-                    local r5_pr6_1 = r161_0:FindFirstChild(r4_pr6_1)
-                    if r5_pr6_1 then
-                        r170_0(r5_pr6_1)
-                    end
-                end
+                for weaponName, _ in pairs(wrapConfig) do applyWrap(weaponName, "none") end
+                wrapConfig = {}
+                saveWrapSettings()
             end, 8, true)
     end
 
@@ -388,12 +339,7 @@ function Skins.Init(deps)
 end
 
 function Skins.Cleanup()
-    for r3_2, r4_2 in pairs(r148_0) do
-        local r5_2 = r151_0:FindFirstChild(r3_2)
-        if r5_2 then
-            r153_0:PutBackOriginal(r5_2)
-        end
-    end
+    for weaponName, _ in pairs(appliedSkins) do restoreOriginal(weaponName) end
 end
 
 return Skins
