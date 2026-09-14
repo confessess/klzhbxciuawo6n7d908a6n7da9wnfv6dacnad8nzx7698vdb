@@ -1,5 +1,5 @@
 -- ============================================================
--- Rivals Modular -- Skins (Fixed with debug)
+-- Rivals Modular -- Skins (Fixed)
 -- ============================================================
 
 local Skins = {}
@@ -61,7 +61,6 @@ local wrapList = {}
 local SKINS_FILE = "RivalsModular/WeaponSkins.json"
 local WRAPS_FILE = "RivalsModular/WrapChanger.json"
 
--- Debug function
 local function debugPrint(msg)
     print("[skins] " .. msg)
 end
@@ -73,7 +72,7 @@ local function getWeaponsFolder()
     end)
     if ok and result then
         weaponsFolder = result
-        debugPrint("Found weapons folder: " .. weaponsFolder:GetFullName())
+        debugPrint("Found weapons folder")
     else
         debugPrint("ERROR: Could not find Weapons folder")
     end
@@ -94,7 +93,6 @@ local function getSkinCases()
         local ok2, case = pcall(function() return viewModels:FindFirstChild(name) end)
         if ok2 and case then
             table.insert(skinCases, case)
-            debugPrint("Found skin case: " .. name)
         end
     end
     return skinCases
@@ -104,16 +102,12 @@ local function saveOriginal(weaponName)
     local folder = getWeaponsFolder()
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then
-        debugPrint("ERROR: Weapon not found: " .. weaponName)
-        return
-    end
+    if not weapon then return end
     if not originalGuns[weaponName] then
         originalGuns[weaponName] = {}
         for _, child in pairs(weapon:GetChildren()) do
             table.insert(originalGuns[weaponName], child:Clone())
         end
-        debugPrint("Saved original: " .. weaponName .. " (" .. #originalGuns[weaponName] .. " children)")
     end
 end
 
@@ -128,17 +122,16 @@ local function restoreOriginal(weaponName)
             child.Parent = weapon
         end
         originalGuns[weaponName] = nil
-        debugPrint("Restored original: " .. weaponName)
     end
 end
 
 local function applySkin(weaponName, skinName)
-    debugPrint("Applying skin: " .. weaponName .. " -> " .. skinName)
+    debugPrint("Applying: " .. weaponName .. " -> " .. skinName)
     local folder = getWeaponsFolder()
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
     if not weapon then
-        debugPrint("ERROR: Weapon not found: " .. weaponName)
+        debugPrint("ERROR: Weapon not found")
         return
     end
 
@@ -147,12 +140,11 @@ local function applySkin(weaponName, skinName)
         local found = case:FindFirstChild(skinName)
         if found then
             skinModel = found
-            debugPrint("Found skin in case: " .. case.Name)
             break
         end
     end
     if not skinModel then
-        debugPrint("ERROR: Skin not found: " .. skinName)
+        debugPrint("ERROR: Skin not found")
         return
     end
 
@@ -162,7 +154,7 @@ local function applySkin(weaponName, skinName)
         child:Clone().Parent = weapon
     end
     appliedSkins[weaponName] = true
-    debugPrint("Skin applied successfully!")
+    debugPrint("Success!")
 end
 
 local function saveSettings()
@@ -214,7 +206,6 @@ local function applyWrap(weaponName, wrapName)
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
     if not weapon then return end
-
     for _, desc in ipairs(weapon:GetDescendants()) do
         if desc:IsA("BasePart") then
             for _, child in ipairs(desc:GetChildren()) do
@@ -222,7 +213,6 @@ local function applyWrap(weaponName, wrapName)
             end
         end
     end
-
     if wrapName ~= "none" then
         local ok, wrapFolder = pcall(function() return LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName) end)
         if ok and wrapFolder then
@@ -267,7 +257,6 @@ function Skins.Init(deps)
     LocalPlayer = Utils.LocalPlayer
     HttpService = game:GetService("HttpService")
 
-    -- Debug: Check if paths exist
     task.delay(0.5, function()
         debugPrint("Initializing...")
         getWeaponsFolder()
@@ -298,11 +287,7 @@ function Skins.Init(deps)
                     selectedSkin = selectedSkins[v] or WEAPON_SKINS[v][1]
                     if skinDropdown then
                         skinDropdown:SetValues(WEAPON_SKINS[v])
-                        skinDropdown:SetValue(selectedSkin)
                     end
-                    selectedSkins[v] = selectedSkin
-                    applySkin(v, selectedSkin)
-                    saveSettings()
                 end
             end, 2)
 
