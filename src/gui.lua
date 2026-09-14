@@ -461,7 +461,7 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
     arrow.Size                   = UDim2.fromOffset(20, 20)
     arrow.Position               = UDim2.new(1, -26, 0.5, -10)
     arrow.BackgroundTransparency = 1
-    arrow.Text                   = "\u25BE"
+    arrow.Text                   = "\226\150\190"
     arrow.TextColor3             = Theme.TextDim
     arrow.Font                   = Enum.Font.GothamBold
     arrow.TextSize               = 12
@@ -852,7 +852,6 @@ local function build()
     ContentHost.BorderSizePixel  = 0
     ContentHost.Parent           = MenuFrame
 
-    -- Tabs
     createTab("Legit",     1)
     createTab("Rage",      2)
     createTab("Visuals",   3)
@@ -863,7 +862,6 @@ local function build()
     createTab("Misc",      8)
     createTab("Settings",  9)
 
-    -- Mobile toggle button
     if Utils.IsMobile then
         MobileButton = Instance.new("TextButton")
         MobileButton.Name             = "MobileToggle"
@@ -925,7 +923,6 @@ function GUI.Init(deps)
     build()
     initKeybind()
 
-    -- Click-outside-to-close
     UserInputService.InputBegan:Connect(function(input)
         if not IsOpen then return end
         if input.UserInputType ~= Enum.UserInputType.MouseButton1
@@ -942,7 +939,6 @@ function GUI.Init(deps)
         end
     end)
 
-    -- Settings tab
     local settings = Pages["Settings"]
     if settings then
         GUI.AddSection(settings, "Menu", 1)
