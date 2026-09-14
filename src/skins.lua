@@ -1,5 +1,5 @@
 -- ============================================================
--- Rivals Modular -- Skins (Fixed for our GUI)
+-- Rivals Modular -- Skins (Fixed with debug)
 -- ============================================================
 
 local Skins = {}
@@ -61,22 +61,41 @@ local wrapList = {}
 local SKINS_FILE = "RivalsModular/WeaponSkins.json"
 local WRAPS_FILE = "RivalsModular/WrapChanger.json"
 
+-- Debug function
+local function debugPrint(msg)
+    print("[skins] " .. msg)
+end
+
 local function getWeaponsFolder()
     if weaponsFolder then return weaponsFolder end
     local ok, result = pcall(function()
         return LocalPlayer.PlayerScripts.Assets.ViewModels.Weapons
     end)
-    if ok then weaponsFolder = result end
+    if ok and result then
+        weaponsFolder = result
+        debugPrint("Found weapons folder: " .. weaponsFolder:GetFullName())
+    else
+        debugPrint("ERROR: Could not find Weapons folder")
+    end
     return weaponsFolder
 end
 
 local function getSkinCases()
     if #skinCases > 0 then return skinCases end
-    local viewModels = LocalPlayer.PlayerScripts.Assets.ViewModels
+    local ok, viewModels = pcall(function()
+        return LocalPlayer.PlayerScripts.Assets.ViewModels
+    end)
+    if not ok or not viewModels then
+        debugPrint("ERROR: Could not find ViewModels")
+        return skinCases
+    end
     local names = {"Spooky Skin Case", "Skin Case 2", "Skin Case 3", "Skin Case", "Other", "Festive Skin Case"}
     for _, name in ipairs(names) do
-        local ok, case = pcall(function() return viewModels:FindFirstChild(name) end)
-        if ok and case then table.insert(skinCases, case) end
+        local ok2, case = pcall(function() return viewModels:FindFirstChild(name) end)
+        if ok2 and case then
+            table.insert(skinCases, case)
+            debugPrint("Found skin case: " .. name)
+        end
     end
     return skinCases
 end
@@ -85,12 +104,16 @@ local function saveOriginal(weaponName)
     local folder = getWeaponsFolder()
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then return end
+    if not weapon then
+        debugPrint("ERROR: Weapon not found: " .. weaponName)
+        return
+    end
     if not originalGuns[weaponName] then
         originalGuns[weaponName] = {}
         for _, child in pairs(weapon:GetChildren()) do
             table.insert(originalGuns[weaponName], child:Clone())
         end
+        debugPrint("Saved original: " .. weaponName .. " (" .. #originalGuns[weaponName] .. " children)")
     end
 end
 
@@ -105,21 +128,33 @@ local function restoreOriginal(weaponName)
             child.Parent = weapon
         end
         originalGuns[weaponName] = nil
+        debugPrint("Restored original: " .. weaponName)
     end
 end
 
 local function applySkin(weaponName, skinName)
+    debugPrint("Applying skin: " .. weaponName .. " -> " .. skinName)
     local folder = getWeaponsFolder()
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then return end
+    if not weapon then
+        debugPrint("ERROR: Weapon not found: " .. weaponName)
+        return
+    end
 
     local skinModel = nil
     for _, case in ipairs(getSkinCases()) do
         local found = case:FindFirstChild(skinName)
-        if found then skinModel = found break end
+        if found then
+            skinModel = found
+            debugPrint("Found skin in case: " .. case.Name)
+            break
+        end
     end
-    if not skinModel then return end
+    if not skinModel then
+        debugPrint("ERROR: Skin not found: " .. skinName)
+        return
+    end
 
     saveOriginal(weaponName)
     weapon:ClearAllChildren()
@@ -127,6 +162,7 @@ local function applySkin(weaponName, skinName)
         child:Clone().Parent = weapon
     end
     appliedSkins[weaponName] = true
+    debugPrint("Skin applied successfully!")
 end
 
 local function saveSettings()
@@ -151,7 +187,6 @@ local function loadSettings()
     end)
 end
 
--- Wrap changer
 local function getWrapWeapons()
     if #wrapWeapons > 0 then return wrapWeapons end
     local folder = getWeaponsFolder()
@@ -232,7 +267,11 @@ function Skins.Init(deps)
     LocalPlayer = Utils.LocalPlayer
     HttpService = game:GetService("HttpService")
 
-    task.delay(1, function()
+    -- Debug: Check if paths exist
+    task.delay(0.5, function()
+        debugPrint("Initializing...")
+        getWeaponsFolder()
+        getSkinCases()
         loadSettings()
         loadWrapSettings()
     end)
@@ -243,34 +282,30 @@ function Skins.Init(deps)
         local selectedSkin = nil
         local skinDropdown = nil
 
-        -- Build weapon list
         local weaponList = {"None"}
         for weapon, _ in pairs(WEAPON_SKINS) do table.insert(weaponList, weapon) end
         table.sort(weaponList)
 
         GUI.AddSection(page, "Skin Changer", 1)
 
-        -- Weapon dropdown
         GUI.AddDropdown(page, "Weapon",
             function() return weaponList end,
             function() return selectedWeapon end,
             function(v)
                 selectedWeapon = v
+                debugPrint("Selected weapon: " .. v)
                 if v ~= "None" and WEAPON_SKINS[v] then
                     selectedSkin = selectedSkins[v] or WEAPON_SKINS[v][1]
-                    -- Update skin dropdown options
                     if skinDropdown then
                         skinDropdown:SetValues(WEAPON_SKINS[v])
                         skinDropdown:SetValue(selectedSkin)
                     end
-                    -- Auto apply
                     selectedSkins[v] = selectedSkin
                     applySkin(v, selectedSkin)
                     saveSettings()
                 end
             end, 2)
 
-        -- Skin dropdown (returns object with SetValues/SetValue)
         local skinWrapper, skinObj = GUI.AddDropdown(page, "Skin",
             function()
                 if selectedWeapon ~= "None" and WEAPON_SKINS[selectedWeapon] then
@@ -281,6 +316,7 @@ function Skins.Init(deps)
             function() return selectedSkin end,
             function(v)
                 selectedSkin = v
+                debugPrint("Selected skin: " .. v)
                 if selectedWeapon ~= "None" then
                     selectedSkins[selectedWeapon] = v
                     applySkin(selectedWeapon, v)
@@ -289,7 +325,6 @@ function Skins.Init(deps)
             end, 3)
         skinDropdown = skinObj
 
-        -- Reset button
         GUI.AddButton(page, "Reset Skins",
             function()
                 for weaponName, _ in pairs(appliedSkins) do restoreOriginal(weaponName) end
@@ -298,7 +333,6 @@ function Skins.Init(deps)
                 saveSettings()
             end, 4, true)
 
-        -- Wrap changer
         GUI.AddSection(page, "Wrap Changer", 5)
         local wrapWeapon = "none"
         local wrapName = "none"
