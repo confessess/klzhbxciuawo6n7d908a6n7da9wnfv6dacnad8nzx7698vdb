@@ -1,7 +1,5 @@
 -- ============================================================
--- Rivals Modular -- GUI
--- Sleek dark sidebar menu
--- Tabs: Legit, Rage, Visuals, Player, Teleport, World, Skins, Misc, Settings
+-- Rivals Modular -- GUI (Fixed dropdown SetValues)
 -- ============================================================
 
 local TweenService        = game:GetService("TweenService")
@@ -419,12 +417,14 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
 
     local expanded  = false
     local animating = false
+    local currentOptions = options  -- Store reference
 
     local function rebuild()
         for _, child in ipairs(listFrame:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
-        for i, opt in ipairs(options()) do
+        local opts = currentOptions()  -- Call fresh each time
+        for i, opt in ipairs(opts) do
             local optBtn = Instance.new("TextButton")
             optBtn.Size             = UDim2.new(1, 0, 0, 28)
             optBtn.BackgroundColor3 = Theme.Element
@@ -472,7 +472,8 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
         if expanded then
             rebuild()
             listFrame.Visible = true
-            local h = #options() * 30 + 8
+            local opts = currentOptions()
+            local h = #opts * 30 + 8
             tween(listFrame, TWEEN_MED, { Size = UDim2.new(1, 0, 0, h) })
             tween(arrow, TWEEN_MED, { Rotation = 180 })
             task.delay(0.22, function() animating = false end)
@@ -493,9 +494,13 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
     -- Return object with SetValues/SetValue for dynamic updates
     local dropdownObj = {
         SetValues = function(newOpts)
-            -- Store new options, rebuild if expanded
-            options = function() return newOpts end
-            if expanded then rebuild() end
+            -- Replace the options function
+            currentOptions = function() return newOpts end
+            -- Update value label
+            local val = getValue()
+            if val then
+                valueLbl.Text = tostring(val)
+            end
         end,
         SetValue = function(val)
             setValue(val)
@@ -799,7 +804,6 @@ function GUI.Init(deps)
         if not inside then setOpen(false) end
     end)
 
-    -- Register Visuals tab ESP controls
     local visuals = Pages["Visuals"]
     if visuals then
         GUI.AddSection(visuals, "ESP", 1)
@@ -815,30 +819,20 @@ function GUI.Init(deps)
         GUI.AddToggle(visuals, "Distance",
             function() return Config.Get("ESP_Studs") end,
             function(v) Config.Set("ESP_Studs", v) end, 5)
-        GUI.AddToggle(visuals, "Tracer",
-            function() return Config.Get("ESP_Tracer") end,
-            function(v) Config.Set("ESP_Tracer", v) end, 6)
         GUI.AddToggle(visuals, "Health Bar",
             function() return Config.Get("ESP_HealthBar") end,
-            function(v) Config.Set("ESP_HealthBar", v) end, 7)
-        GUI.AddToggle(visuals, "Boxes",
-            function() return Config.Get("ESP_Boxes") end,
-            function(v) Config.Set("ESP_Boxes", v) end, 8)
-        GUI.AddToggle(visuals, "Box Filled",
-            function() return Config.Get("ESP_BoxFilled") end,
-            function(v) Config.Set("ESP_BoxFilled", v) end, 9)
+            function(v) Config.Set("ESP_HealthBar", v) end, 6)
         GUI.AddToggle(visuals, "Team Check",
             function() return Config.Get("ESP_TeamCheck") end,
-            function(v) Config.Set("ESP_TeamCheck", v) end, 10)
+            function(v) Config.Set("ESP_TeamCheck", v) end, 7)
         GUI.AddSlider(visuals, "Max Distance", 100, 2000,
             function() return Config.Get("ESP_MaxDistance") end,
-            function(v) Config.Set("ESP_MaxDistance", v) end, 11)
+            function(v) Config.Set("ESP_MaxDistance", v) end, 8)
         GUI.AddSlider(visuals, "Box Transparency", 0, 100,
             function() return math.floor((Config.Get("ESP_BoxTransparency") or 0.5) * 100) end,
-            function(v) Config.Set("ESP_BoxTransparency", v / 100) end, 12)
+            function(v) Config.Set("ESP_BoxTransparency", v / 100) end, 9)
     end
 
-    -- Settings tab
     local settings = Pages["Settings"]
     if settings then
         GUI.AddSection(settings, "Menu", 1)
