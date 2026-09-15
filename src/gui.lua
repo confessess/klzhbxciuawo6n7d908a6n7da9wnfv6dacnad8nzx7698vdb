@@ -107,15 +107,18 @@ function Components.Toggle(page, label, default, callback, order)
     btn.Parent = frame
 
     btn.MouseButton1Click:Connect(function()
-        state = not state
-        if state then
-            tween(bg, {BackgroundColor3 = Theme.Blue})
-            tween(knob, {Position = UDim2.new(1, -17, 0.5, -7)})
-        else
-            tween(bg, {BackgroundColor3 = Theme.Element})
-            tween(knob, {Position = UDim2.new(0, 3, 0.5, -7)})
-        end
-        if callback then callback(state) end
+        local ok, err = pcall(function()
+            state = not state
+            if state then
+                tween(bg, {BackgroundColor3 = Theme.Blue})
+                tween(knob, {Position = UDim2.new(1, -17, 0.5, -7)})
+            else
+                tween(bg, {BackgroundColor3 = Theme.Element})
+                tween(knob, {Position = UDim2.new(0, 3, 0.5, -7)})
+            end
+            if callback then callback(state) end
+        end)
+        if not ok then warn("[GUI] Toggle error: " .. tostring(err)) end
     end)
 
     return {Set = function(v) state = v end, Get = function() return state end}
@@ -227,12 +230,15 @@ function Components.Dropdown(page, label, options, default, callback, order)
             optLbl.Parent = optBtn
 
             optBtn.MouseButton1Click:Connect(function()
-                currentValue = opt
-                valueLbl.Text = tostring(opt)
-                if callback then callback(opt) end
-                expanded = false
-                tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
-                task.delay(0.15, function() list.Visible = false end)
+                local ok, err = pcall(function()
+                    currentValue = opt
+                    valueLbl.Text = tostring(opt)
+                    if callback then callback(opt) end
+                    expanded = false
+                    tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
+                    task.delay(0.15, function() list.Visible = false end)
+                end)
+                if not ok then warn("[GUI] Dropdown error: " .. tostring(err)) end
             end)
         end
     end
@@ -664,18 +670,28 @@ local function build()
 end
 
 function GUI.ToggleMenu()
-    if IsLoading then return end
-    IsOpen = not IsOpen
-    GUI.UpdatePreviewVisibility()
-    if IsOpen then
-        MainFrame.Visible = true
-        MainFrame.Size = UDim2.fromOffset(780, 0)
-        tween(MainFrame, {Size = UDim2.fromOffset(780, 520)})
-    else
-        tween(MainFrame, {Size = UDim2.fromOffset(780, 0)})
-        task.delay(0.2, function()
-            MainFrame.Visible = false
-        end)
+    if IsLoading then 
+        print("[GUI] Still loading, please wait...")
+        return 
+    end
+
+    local ok, err = pcall(function()
+        IsOpen = not IsOpen
+        GUI.UpdatePreviewVisibility()
+        if IsOpen then
+            MainFrame.Visible = true
+            MainFrame.Size = UDim2.fromOffset(780, 0)
+            tween(MainFrame, {Size = UDim2.fromOffset(780, 520)})
+        else
+            tween(MainFrame, {Size = UDim2.fromOffset(780, 0)})
+            task.delay(0.2, function()
+                MainFrame.Visible = false
+            end)
+        end
+    end)
+
+    if not ok then
+        warn("[GUI] Toggle error: " .. tostring(err))
     end
 end
 
@@ -712,7 +728,7 @@ function GUI.Init(deps)
     end
 
     -- Re-enable after modules load
-    task.delay(2, function()
+    task.delay(3, function()
         IsLoading = false
         if MainFrame then
             MainFrame.Active = true
