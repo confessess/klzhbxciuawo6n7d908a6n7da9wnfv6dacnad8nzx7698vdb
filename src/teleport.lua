@@ -64,18 +64,13 @@ function Teleport.Init(deps)
     Players     = Utils.Players
     LocalPlayer = Utils.LocalPlayer
 
-    local page = GUI.GetPage and GUI.GetPage("Teleport")
+    -- Register GUI (Misc tab)
+    local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.AddSection(page, "Teleport", 1)
-        GUI.AddToggle(page, "TP Behind Enemy",
-            function() return Config.Get("TPBehind_Enabled") end,
-            function(v) Config.Set("TPBehind_Enabled", v) end, 2)
-        GUI.AddSlider(page, "Distance Behind", 1, 10,
-            function() return Config.Get("TPBehind_Distance") end,
-            function(v) Config.Set("TPBehind_Distance", v) end, 3)
-        GUI.AddSlider(page, "Max Target Distance", 100, 5000,
-            function() return Config.Get("TPBehind_MaxDist") end,
-            function(v) Config.Set("TPBehind_MaxDist", v) end, 4)
+        GUI.Components.Section(page, "Teleport", 20)
+        GUI.Components.Toggle(page, "TP Behind Enemy", Config.Get("TPBehind_Enabled"), function(v) Config.Set("TPBehind_Enabled", v) end, 21)
+        GUI.Components.Slider(page, "Distance Behind", 1, 10, Config.Get("TPBehind_Distance"), function(v) Config.Set("TPBehind_Distance", v) end, 22)
+        GUI.Components.Slider(page, "Max Distance", 100, 5000, Config.Get("TPBehind_MaxDist"), function(v) Config.Set("TPBehind_MaxDist", v) end, 23)
     end
 
     print("[rivals] Teleport module initialized.")

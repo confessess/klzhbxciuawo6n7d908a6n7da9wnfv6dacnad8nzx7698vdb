@@ -213,60 +213,16 @@ function World.Init(deps)
     end)
 
     -- Register GUI
-    local page = GUI.GetPage and GUI.GetPage("World")
+    -- Register GUI (Misc tab)
+    local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.AddSection(page, "Color Correction", 1)
-        GUI.AddToggle(page, "Enabled",
-            function() return Config.Get("World_ColorCorrection") end,
-            function(v) Config.Set("World_ColorCorrection", v) updateLighting() end, 2)
-        GUI.AddSlider(page, "Contrast", -10, 10,
-            function() return (Config.Get("World_Contrast") or 0) * 10 end,
-            function(v) Config.Set("World_Contrast", v / 10) updateLighting() end, 3)
-        GUI.AddSlider(page, "Saturation", -10, 10,
-            function() return (Config.Get("World_Saturation") or 0) * 10 end,
-            function(v) Config.Set("World_Saturation", v / 10) updateLighting() end, 4)
-
-        GUI.AddSection(page, "Lighting", 5)
-        GUI.AddToggle(page, "Custom Time",
-            function() return Config.Get("World_CustomTime") end,
-            function(v) Config.Set("World_CustomTime", v) updateLighting() end, 6)
-        GUI.AddSlider(page, "Time of Day", 0, 24,
-            function() return Config.Get("World_TimeOfDay") end,
-            function(v) Config.Set("World_TimeOfDay", v) updateLighting() end, 7)
-        GUI.AddSlider(page, "Brightness", 0, 100,
-            function() return (Config.Get("World_Brightness") or 1) * 10 end,
-            function(v) Config.Set("World_Brightness", v / 10) updateLighting() end, 8)
-        GUI.AddToggle(page, "Fullbright",
-            function() return Config.Get("World_Fullbright") end,
-            function(v) Config.Set("World_Fullbright", v) updateLighting() end, 9)
-
-        GUI.AddSection(page, "Atmosphere", 10)
-        GUI.AddToggle(page, "Custom Fog",
-            function() return Config.Get("World_FogEnabled") end,
-            function(v) Config.Set("World_FogEnabled", v) updateLighting() end, 11)
-        GUI.AddSlider(page, "Fog Density", 0, 100,
-            function() return (Config.Get("World_FogDensity") or 0.1) * 100 end,
-            function(v) Config.Set("World_FogDensity", v / 100) updateLighting() end, 12)
-
-        GUI.AddSection(page, "Skybox", 13)
-        GUI.AddDropdown(page, "Skybox",
-            function() return SKYBOX_LIST end,
-            function() return Config.Get("World_Skybox") end,
-            function(v)
-                Config.Set("World_Skybox", v)
-                applySkybox(v)
-            end, 14)
-
-        GUI.AddSection(page, "Rendering", 15)
-        GUI.AddToggle(page, "Bloom",
-            function() return Config.Get("World_BloomEnabled") end,
-            function(v) Config.Set("World_BloomEnabled", v) updateLighting() end, 16)
-        GUI.AddSlider(page, "Bloom Intensity", 0, 20,
-            function() return (Config.Get("World_BloomIntensity") or 0.5) * 10 end,
-            function(v) Config.Set("World_BloomIntensity", v / 10) updateLighting() end, 17)
-        GUI.AddSlider(page, "Bloom Size", 0, 50,
-            function() return Config.Get("World_BloomSize") end,
-            function(v) Config.Set("World_BloomSize", v) updateLighting() end, 18)
+        GUI.Components.Section(page, "World", 30)
+        GUI.Components.Toggle(page, "Color Correction", Config.Get("World_ColorCorrection"), function(v) Config.Set("World_ColorCorrection", v) updateLighting() end, 31)
+        GUI.Components.Slider(page, "Contrast", -10, 10, (Config.Get("World_Contrast") or 0) * 10, function(v) Config.Set("World_Contrast", v / 10) updateLighting() end, 32)
+        GUI.Components.Slider(page, "Saturation", -10, 10, (Config.Get("World_Saturation") or 0) * 10, function(v) Config.Set("World_Saturation", v / 10) updateLighting() end, 33)
+        GUI.Components.Toggle(page, "Fullbright", Config.Get("World_Fullbright"), function(v) Config.Set("World_Fullbright", v) updateLighting() end, 34)
+        GUI.Components.Toggle(page, "Bloom", Config.Get("World_BloomEnabled"), function(v) Config.Set("World_BloomEnabled", v) updateLighting() end, 35)
+        GUI.Components.Dropdown(page, "Skybox", {"Default", "Neptune", "Nebula", "Vaporwave"}, Config.Get("World_Skybox"), function(v) Config.Set("World_Skybox", v) applySkybox(v) end, 36)
     end
 
     print("[rivals] World module initialized.")

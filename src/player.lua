@@ -219,36 +219,25 @@ function Player.Init(deps)
     end)
 
     -- Register GUI
-    local page = GUI.GetPage and GUI.GetPage("Player")
+    -- Register GUI (Misc tab)
+    local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.AddSection(page, "Movement", 1)
-        GUI.AddToggle(page, "Fly",
-            function() return Config.Get("Fly_Enabled") end,
-            function(v)
-                Config.Set("Fly_Enabled", v)
-                if v then startFly() else stopFly() end
-            end, 2)
-        GUI.AddSlider(page, "Fly Speed", 1, 100,
-            function() return Config.Get("Fly_Speed") end,
-            function(v) Config.Set("Fly_Speed", v) end, 3)
-        GUI.AddToggle(page, "WalkSpeed",
-            function() return Config.Get("WalkSpeed_Enabled") end,
-            function(v)
-                Config.Set("WalkSpeed_Enabled", v)
-                if v then startWalkSpeed() else stopWalkSpeed() end
-            end, 4)
-        GUI.AddSlider(page, "WalkSpeed Value", 1, 100,
-            function() return Config.Get("WalkSpeed_Value") end,
-            function(v) Config.Set("WalkSpeed_Value", v) end, 5)
-        GUI.AddToggle(page, "Infinite Jump",
-            function() return Config.Get("InfJump_Enabled") end,
-            function(v) Config.Set("InfJump_Enabled", v) end, 6)
-        GUI.AddToggle(page, "Noclip",
-            function() return Config.Get("Noclip_Enabled") end,
-            function(v)
-                Config.Set("Noclip_Enabled", v)
-                if v then startNoclip() else stopNoclip() end
-            end, 7)
+        GUI.Components.Section(page, "Movement", 1)
+        GUI.Components.Toggle(page, "Fly", Config.Get("Fly_Enabled"), function(v) 
+            Config.Set("Fly_Enabled", v)
+            if v then startFly() else stopFly() end
+        end, 2)
+        GUI.Components.Slider(page, "Fly Speed", 1, 100, Config.Get("Fly_Speed"), function(v) Config.Set("Fly_Speed", v) end, 3)
+        GUI.Components.Toggle(page, "WalkSpeed", Config.Get("WalkSpeed_Enabled"), function(v)
+            Config.Set("WalkSpeed_Enabled", v)
+            if v then startWalkSpeed() else stopWalkSpeed() end
+        end, 4)
+        GUI.Components.Slider(page, "WalkSpeed Value", 1, 100, Config.Get("WalkSpeed_Value"), function(v) Config.Set("WalkSpeed_Value", v) end, 5)
+        GUI.Components.Toggle(page, "Infinite Jump", Config.Get("InfJump_Enabled"), function(v) Config.Set("InfJump_Enabled", v) end, 6)
+        GUI.Components.Toggle(page, "Noclip", Config.Get("Noclip_Enabled"), function(v)
+            Config.Set("Noclip_Enabled", v)
+            if v then startNoclip() else stopNoclip() end
+        end, 7)
     end
 
     print("[rivals] Player module initialized.")

@@ -413,78 +413,20 @@ function Misc.Init(deps)
     end)
 
     -- Register GUI
+    -- Register GUI (Misc tab)
     local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.AddSection(page, "Hit Sounds", 1)
-        GUI.AddToggle(page, "Enabled",
-            function() return Config.Get("HitSound_Enabled") end,
-            function(v) Config.Set("HitSound_Enabled", v) end, 2)
-        GUI.AddSlider(page, "Volume", 0, 10,
-            function() return Config.Get("HitSound_Volume") end,
-            function(v) Config.Set("HitSound_Volume", v) end, 3)
-        GUI.AddDropdown(page, "Sound",
-            function() return HIT_SOUND_LIST end,
-            function() return Config.Get("HitSound_Selection") end,
-            function(v) Config.Set("HitSound_Selection", v) end, 4)
+        GUI.Components.Section(page, "Hit Sounds", 40)
+        GUI.Components.Toggle(page, "Enabled", Config.Get("HitSound_Enabled"), function(v) Config.Set("HitSound_Enabled", v) end, 41)
+        GUI.Components.Slider(page, "Volume", 0, 10, Config.Get("HitSound_Volume"), function(v) Config.Set("HitSound_Volume", v) end, 42)
+        GUI.Components.Dropdown(page, "Sound", {"None", "Skeet", "Neverlose", "Rust", "TF2"}, Config.Get("HitSound_Selection"), function(v) Config.Set("HitSound_Selection", v) end, 43)
 
-        GUI.AddSection(page, "Device Spoofer", 5)
-        GUI.AddDropdown(page, "Device",
-            function() return {"MouseKeyboard", "Touch", "Gamepad", "VR"} end,
-            function() return Config.Get("DeviceSpoofer_Active") end,
-            function(v)
-                Config.Set("DeviceSpoofer_Active", v)
-                updateDeviceSpoofer()
-            end, 6)
+        GUI.Components.Section(page, "Crosshair", 44)
+        GUI.Components.Toggle(page, "Enabled", Config.Get("Crosshair_Enabled"), function(v) Config.Set("Crosshair_Enabled", v) end, 45)
+        GUI.Components.Toggle(page, "Rainbow", Config.Get("Crosshair_Rainbow"), function(v) Config.Set("Crosshair_Rainbow", v) end, 46)
 
-        GUI.AddSection(page, "Particles", 7)
-        GUI.AddButton(page, "Remove Flashbang",
-            function() removeFlash() end, 8, false)
-        GUI.AddButton(page, "Remove Smoke",
-            function() removeSmoke() end, 9, false)
-        GUI.AddButton(page, "Random Fire Color",
-            function() randomizeFire() end, 10, false)
-
-        GUI.AddSection(page, "Custom Crosshair", 11)
-        GUI.AddToggle(page, "Enabled",
-            function() return Config.Get("Crosshair_Enabled") end,
-            function(v) Config.Set("Crosshair_Enabled", v) end, 12)
-        GUI.AddToggle(page, "Rotation",
-            function() return Config.Get("Crosshair_Rotation") end,
-            function(v) Config.Set("Crosshair_Rotation", v) end, 13)
-        GUI.AddSlider(page, "Rotation Speed", 1, 10,
-            function() return Config.Get("Crosshair_RotSpeed") end,
-            function(v) Config.Set("Crosshair_RotSpeed", v) end, 14)
-        GUI.AddSlider(page, "Length", 1, 50,
-            function() return Config.Get("Crosshair_Length") end,
-            function(v) Config.Set("Crosshair_Length", v) end, 15)
-        GUI.AddSlider(page, "Thickness", 1, 10,
-            function() return Config.Get("Crosshair_Thickness") end,
-            function(v) Config.Set("Crosshair_Thickness", v) end, 16)
-        GUI.AddToggle(page, "Rainbow",
-            function() return Config.Get("Crosshair_Rainbow") end,
-            function(v) Config.Set("Crosshair_Rainbow", v) end, 17)
-
-        GUI.AddSection(page, "Trash Talk", 18)
-        GUI.AddToggle(page, "Enabled (Press V)",
-            function() return Config.Get("TrashTalk_Enabled") end,
-            function(v) Config.Set("TrashTalk_Enabled", v) end, 19)
-
-        GUI.AddSection(page, "Teleport", 20)
-        GUI.AddToggle(page, "TP Behind Enemy",
-            function() return Config.Get("TPBehind_Enabled") end,
-            function(v) Config.Set("TPBehind_Enabled", v) end, 21)
-        GUI.AddSlider(page, "TP Distance", 1, 10,
-            function() return Config.Get("TPBehind_Distance") end,
-            function(v) Config.Set("TPBehind_Distance", v) end, 22)
-
-        GUI.AddSection(page, "Matchmaking", 23)
-        GUI.AddDropdown(page, "Join Queue",
-            function() return {"none", "1v1", "2v2", "3v3", "4v4", "5v5", "1v1v1", "2v2v2", "2v2_beginner"} end,
-            function() return Config.Get("MM_Queue") end,
-            function(v)
-                Config.Set("MM_Queue", v)
-                joinQueue(v)
-            end, 24)
+        GUI.Components.Section(page, "Other", 47)
+        GUI.Components.Toggle(page, "Trash Talk (V)", Config.Get("TrashTalk_Enabled"), function(v) Config.Set("TrashTalk_Enabled", v) end, 48)
     end
 
     print("[rivals] Misc module initialized.")

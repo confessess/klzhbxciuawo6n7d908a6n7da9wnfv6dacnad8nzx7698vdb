@@ -403,96 +403,41 @@ function Combat.Init(deps)
     Mouse.Button1Up:Connect(onButton1Up)
 
     -- Register GUI controls
-    local page = GUI.GetPage and GUI.GetPage("Legit")
+    -- Register GUI controls (Combat tab)
+    local page = GUI.GetPage and GUI.GetPage("Combat")
     if page then
-        GUI.AddSection(page, "Aimbot", 1)
-        GUI.AddToggle(page, "Enabled",
-            function() return Config.Get("Aimbot_Enabled") end,
-            function(v) Config.Set("Aimbot_Enabled", v) end, 2)
-        GUI.AddToggle(page, "Wall Check",
-            function() return Config.Get("Aimbot_WallCheck") end,
-            function(v) Config.Set("Aimbot_WallCheck", v) end, 3)
-        GUI.AddToggle(page, "Team Check",
-            function() return Config.Get("Aimbot_TeamCheck") end,
-            function(v) Config.Set("Aimbot_TeamCheck", v) end, 4)
-        GUI.AddToggle(page, "Smoothness",
-            function() return Config.Get("Aimbot_Smoothness") end,
-            function(v) Config.Set("Aimbot_Smoothness", v) end, 5)
-        GUI.AddToggle(page, "Prediction",
-            function() return Config.Get("Aimbot_Prediction") end,
-            function(v) Config.Set("Aimbot_Prediction", v) end, 6)
-        GUI.AddToggle(page, "Sticky Aim",
-            function() return Config.Get("Aimbot_StickyAim") end,
-            function(v) Config.Set("Aimbot_StickyAim", v) end, 7)
-        GUI.AddDropdown(page, "Aim Part",
-            function() return {"Head", "HumanoidRootPart"} end,
-            function() return Config.Get("Aimbot_AimPart") end,
-            function(v) Config.Set("Aimbot_AimPart", v) end, 8)
-        GUI.AddToggle(page, "Show FOV",
-            function() return Config.Get("Aimbot_ShowFOV") end,
-            function(v) Config.Set("Aimbot_ShowFOV", v) end, 9)
-        GUI.AddSlider(page, "FOV Size", 0, 1000,
-            function() return Config.Get("Aimbot_FOVSize") end,
-            function(v) Config.Set("Aimbot_FOVSize", v) end, 10)
-        GUI.AddSlider(page, "Smoothness", 0, 20,
-            function() return Config.Get("Aimbot_SmoothValue") end,
-            function(v) Config.Set("Aimbot_SmoothValue", v) end, 11)
-        GUI.AddSlider(page, "Prediction X", 0, 10,
-            function() return Config.Get("Aimbot_PredX") end,
-            function(v) Config.Set("Aimbot_PredX", v) end, 12)
-        GUI.AddSlider(page, "Prediction Y", 0, 10,
-            function() return Config.Get("Aimbot_PredY") end,
-            function(v) Config.Set("Aimbot_PredY", v) end, 13)
+        -- Aimbot Section
+        GUI.Components.Section(page, "Aimbot", 1)
+        GUI.Components.Toggle(page, "Enabled", Config.Get("Aimbot_Enabled"), function(v) Config.Set("Aimbot_Enabled", v) end, 2)
+        GUI.Components.Toggle(page, "Wall Check", Config.Get("Aimbot_WallCheck"), function(v) Config.Set("Aimbot_WallCheck", v) end, 3)
+        GUI.Components.Toggle(page, "Team Check", Config.Get("Aimbot_TeamCheck"), function(v) Config.Set("Aimbot_TeamCheck", v) end, 4)
+        GUI.Components.Toggle(page, "Smoothness", Config.Get("Aimbot_Smoothness"), function(v) Config.Set("Aimbot_Smoothness", v) end, 5)
+        GUI.Components.Toggle(page, "Prediction", Config.Get("Aimbot_Prediction"), function(v) Config.Set("Aimbot_Prediction", v) end, 6)
+        GUI.Components.Dropdown(page, "Aim Part", {"Head", "HumanoidRootPart"}, Config.Get("Aimbot_AimPart"), function(v) Config.Set("Aimbot_AimPart", v) end, 7)
+        GUI.Components.Toggle(page, "Show FOV", Config.Get("Aimbot_ShowFOV"), function(v) Config.Set("Aimbot_ShowFOV", v) end, 8)
+        GUI.Components.Slider(page, "FOV Size", 0, 1000, Config.Get("Aimbot_FOVSize"), function(v) Config.Set("Aimbot_FOVSize", v) end, 9)
+        GUI.Components.Slider(page, "Smooth Value", 0, 20, Config.Get("Aimbot_SmoothValue"), function(v) Config.Set("Aimbot_SmoothValue", v) end, 10)
 
-        GUI.AddSection(page, "Triggerbot", 14)
-        GUI.AddToggle(page, "Enabled",
-            function() return Config.Get("Triggerbot_Enabled") end,
-            function(v) Config.Set("Triggerbot_Enabled", v) end, 15)
-        GUI.AddToggle(page, "Team Check",
-            function() return Config.Get("Triggerbot_TeamCheck") end,
-            function(v) Config.Set("Triggerbot_TeamCheck", v) end, 16)
-        GUI.AddSlider(page, "Chance %", 1, 100,
-            function() return Config.Get("Triggerbot_Chance") end,
-            function(v) Config.Set("Triggerbot_Chance", v) end, 17)
-        GUI.AddSlider(page, "Click Delay", 0, 50,
-            function() return Config.Get("Triggerbot_Delay") end,
-            function(v) Config.Set("Triggerbot_Delay", v) end, 18)
-    end
+        -- Triggerbot Section
+        GUI.Components.Section(page, "Triggerbot", 11)
+        GUI.Components.Toggle(page, "Enabled", Config.Get("Triggerbot_Enabled"), function(v) Config.Set("Triggerbot_Enabled", v) end, 12)
+        GUI.Components.Toggle(page, "Team Check", Config.Get("Triggerbot_TeamCheck"), function(v) Config.Set("Triggerbot_TeamCheck", v) end, 13)
+        GUI.Components.Slider(page, "Chance %", 1, 100, Config.Get("Triggerbot_Chance"), function(v) Config.Set("Triggerbot_Chance", v) end, 14)
+        GUI.Components.Slider(page, "Delay", 0, 50, Config.Get("Triggerbot_Delay"), function(v) Config.Set("Triggerbot_Delay", v) end, 15)
 
-    -- Rage tab
-    local ragePage = GUI.GetPage and GUI.GetPage("Rage")
-    if ragePage then
-        GUI.AddSection(ragePage, "Silent Aim", 1)
-        GUI.AddToggle(ragePage, "Enabled",
-            function() return Config.Get("SilentAim_Enabled") end,
-            function(v) Config.Set("SilentAim_Enabled", v) end, 2)
-        GUI.AddToggle(ragePage, "Auto Click",
-            function() return Config.Get("SilentAim_AutoClick") end,
-            function(v) Config.Set("SilentAim_AutoClick", v) end, 3)
-        GUI.AddToggle(ragePage, "Wall Check",
-            function() return Config.Get("SilentAim_WallCheck") end,
-            function(v) Config.Set("SilentAim_WallCheck", v) end, 4)
-        GUI.AddToggle(ragePage, "Team Check",
-            function() return Config.Get("SilentAim_TeamCheck") end,
-            function(v) Config.Set("SilentAim_TeamCheck", v) end, 5)
-        GUI.AddToggle(ragePage, "Use FOV",
-            function() return Config.Get("SilentAim_UseFOV") end,
-            function(v) Config.Set("SilentAim_UseFOV", v) end, 6)
-        GUI.AddSlider(ragePage, "FOV Size", 50, 1000,
-            function() return Config.Get("SilentAim_FOVSize") end,
-            function(v) Config.Set("SilentAim_FOVSize", v) end, 7)
-        GUI.AddSlider(ragePage, "Hitchance %", 0, 100,
-            function() return Config.Get("SilentAim_Hitchance") end,
-            function(v) Config.Set("SilentAim_Hitchance", v) end, 8)
-        GUI.AddDropdown(ragePage, "Hit Part",
-            function() return {"Head", "HumanoidRootPart"} end,
-            function() return Config.Get("SilentAim_HitPart") end,
-            function(v) Config.Set("SilentAim_HitPart", v) end, 9)
+        -- Silent Aim Section
+        GUI.Components.Section(page, "Silent Aim", 16)
+        GUI.Components.Toggle(page, "Enabled", Config.Get("SilentAim_Enabled"), function(v) Config.Set("SilentAim_Enabled", v) end, 17)
+        GUI.Components.Toggle(page, "Wall Check", Config.Get("SilentAim_WallCheck"), function(v) Config.Set("SilentAim_WallCheck", v) end, 18)
+        GUI.Components.Toggle(page, "Team Check", Config.Get("SilentAim_TeamCheck"), function(v) Config.Set("SilentAim_TeamCheck", v) end, 19)
+        GUI.Components.Toggle(page, "Use FOV", Config.Get("SilentAim_UseFOV"), function(v) Config.Set("SilentAim_UseFOV", v) end, 20)
+        GUI.Components.Slider(page, "FOV Size", 50, 1000, Config.Get("SilentAim_FOVSize"), function(v) Config.Set("SilentAim_FOVSize", v) end, 21)
+        GUI.Components.Slider(page, "Hitchance %", 0, 100, Config.Get("SilentAim_Hitchance"), function(v) Config.Set("SilentAim_Hitchance", v) end, 22)
+        GUI.Components.Dropdown(page, "Hit Part", {"Head", "HumanoidRootPart"}, Config.Get("SilentAim_HitPart"), function(v) Config.Set("SilentAim_HitPart", v) end, 23)
 
-        GUI.AddSection(ragePage, "Ragebot", 10)
-        GUI.AddToggle(ragePage, "Enabled",
-            function() return Config.Get("Ragebot_Enabled") end,
-            function(v) Config.Set("Ragebot_Enabled", v) end, 11)
+        -- Ragebot Section
+        GUI.Components.Section(page, "Ragebot", 24)
+        GUI.Components.Toggle(page, "Enabled", Config.Get("Ragebot_Enabled"), function(v) Config.Set("Ragebot_Enabled", v) end, 25)
     end
 
     print("[rivals] Combat module initialized.")

@@ -688,6 +688,34 @@ function GUI.Init(deps)
     local ok, err = pcall(function()
         build()
         createPreviewWindows()
+
+        -- Demo content (remove when modules are fixed)
+        local combat = Pages["Combat"]
+        if combat then
+            Components.Section(combat, "Aimbot", 1)
+            Components.Toggle(combat, "Enable", false, function(v) print("Aimbot:", v) end, 2)
+            Components.Dropdown(combat, "Target", {"Head", "Chest"}, "Head", function(v) print(v) end, 3)
+            Components.Slider(combat, "FOV", 0, 360, 90, function(v) print(v) end, 4)
+        end
+
+        local visuals = Pages["Visuals"]
+        if visuals then
+            Components.Section(visuals, "ESP", 1)
+            Components.Toggle(visuals, "Enable", false, function(v) print("ESP:", v) end, 2)
+        end
+
+        local skins = Pages["Skins"]
+        if skins then
+            Components.Section(skins, "Skin Changer", 1)
+            Components.Dropdown(skins, "Weapon", {"None", "AK-47"}, "None", function(v) print(v) end, 2)
+        end
+
+        local settings = Pages["Settings"]
+        if settings then
+            Components.Button(settings, "Unload", function() 
+                if Core and Core.Unload then Core.Unload() end
+            end, 1, true)
+        end
     end)
     if not ok then
         warn("[GUI] Error: " .. tostring(err))

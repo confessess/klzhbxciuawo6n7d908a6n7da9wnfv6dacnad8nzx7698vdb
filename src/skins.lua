@@ -394,102 +394,84 @@ function Skins.Init(deps)
 
     local page = GUI.GetPage and GUI.GetPage("Skins")
     if page then
-        GUI.AddSection(page, "Skin Changer", 1)
+        GUI.Components.Section(page, "Skin Changer", 1)
 
-        GUI.AddToggle(page, "Use Any Skin (GLITCHY)",
-            function() return glitchyMode end,
-            function(v)
-                glitchyMode = v
-                if selectedWeapon ~= "None" then
-                    skinOptions = getSkinsForWeapon(selectedWeapon)
-                    selectedSkin = "None"
-                end
-            end, 2)
+        GUI.Components.Toggle(page, "Use Any Skin (GLITCHY)", glitchyMode, function(v)
+            glitchyMode = v
+            if selectedWeapon ~= "None" then
+                skinOptions = getSkinsForWeapon(selectedWeapon)
+                selectedSkin = "None"
+            end
+        end, 2)
 
-        GUI.AddDropdown(page, "Weapon",
-            function() return WEAPON_LIST end,
-            function() return selectedWeapon end,
-            function(v)
-                selectedWeapon = v
-                if v ~= "None" then
-                    skinOptions = getSkinsForWeapon(v)
-                    selectedSkin = "None"
-                    updatePreview(v, nil)
-                else
-                    skinOptions = {"Select a weapon first"}
-                    selectedSkin = "None"
-                    updatePreview("None", nil)
-                end
-            end, 3)
+        GUI.Components.Dropdown(page, "Weapon", WEAPON_LIST, selectedWeapon, function(v)
+            selectedWeapon = v
+            if v ~= "None" then
+                skinOptions = getSkinsForWeapon(v)
+                selectedSkin = "None"
+                updatePreview(v, nil)
+            else
+                skinOptions = {"Select a weapon first"}
+                selectedSkin = "None"
+                updatePreview("None", nil)
+            end
+        end, 3)
 
-        GUI.AddDropdown(page, "Skin",
-            function() return skinOptions end,
-            function() return selectedSkin end,
-            function(v)
-                selectedSkin = v
-                if selectedWeapon ~= "None" and v ~= "None" then
-                    updatePreview(selectedWeapon, v)
-                    local success = applySkin(selectedWeapon, v)
-                    if success then
-                        saveSkins()
-                    end
-                end
-            end, 4)
-
-        GUI.AddButton(page, "Reset Weapon",
-            function()
-                if selectedWeapon ~= "None" then
-                    resetWeapon(selectedWeapon)
+        GUI.Components.Dropdown(page, "Skin", skinOptions, selectedSkin, function(v)
+            selectedSkin = v
+            if selectedWeapon ~= "None" and v ~= "None" then
+                updatePreview(selectedWeapon, v)
+                local success = applySkin(selectedWeapon, v)
+                if success then
                     saveSkins()
-                    updatePreview(selectedWeapon, nil)
                 end
-            end, 5, true)
+            end
+        end, 4)
 
-        GUI.AddButton(page, "Reset All",
-            function()
-                for weapon, _ in pairs(currentSkins) do
-                    resetWeapon(weapon)
-                end
+        GUI.Components.Button(page, "Reset Weapon", function()
+            if selectedWeapon ~= "None" then
+                resetWeapon(selectedWeapon)
                 saveSkins()
-            end, 6, true)
+                updatePreview(selectedWeapon, nil)
+            end
+        end, 5, true)
+
+        GUI.Components.Button(page, "Reset All", function()
+            for weapon, _ in pairs(currentSkins) do
+                resetWeapon(weapon)
+            end
+            saveSkins()
+        end, 6, true)
 
         -- Wrap Changer Section
-        GUI.AddSection(page, "Wrap Changer", 7)
+        GUI.Components.Section(page, "Wrap Changer", 7)
 
-        GUI.AddDropdown(page, "Weapon",
-            function() return getWrapWeapons() end,
-            function() return selectedWrapWeapon end,
-            function(v)
-                selectedWrapWeapon = v
-            end, 8)
+        GUI.Components.Dropdown(page, "Weapon", getWrapWeapons(), selectedWrapWeapon, function(v)
+            selectedWrapWeapon = v
+        end, 8)
 
-        GUI.AddDropdown(page, "Wrap",
-            function() return ALL_WRAPS end,
-            function() return selectedWrap end,
-            function(v)
-                selectedWrap = v
-                if selectedWrapWeapon ~= "None" and v ~= "None" then
-                    applyWrap(selectedWrapWeapon, v)
-                    saveWraps()
-                end
-            end, 9)
-
-        GUI.AddButton(page, "Clear Wrap",
-            function()
-                if selectedWrapWeapon ~= "None" then
-                    applyWrap(selectedWrapWeapon, "None")
-                    saveWraps()
-                end
-            end, 10, true)
-
-        GUI.AddButton(page, "Clear All Wraps",
-            function()
-                for weapon, _ in pairs(wrapConfig) do
-                    applyWrap(weapon, "None")
-                end
-                wrapConfig = {}
+        GUI.Components.Dropdown(page, "Wrap", ALL_WRAPS, selectedWrap, function(v)
+            selectedWrap = v
+            if selectedWrapWeapon ~= "None" and v ~= "None" then
+                applyWrap(selectedWrapWeapon, v)
                 saveWraps()
-            end, 11, true)
+            end
+        end, 9)
+
+        GUI.Components.Button(page, "Clear Wrap", function()
+            if selectedWrapWeapon ~= "None" then
+                applyWrap(selectedWrapWeapon, "None")
+                saveWraps()
+            end
+        end, 10, true)
+
+        GUI.Components.Button(page, "Clear All Wraps", function()
+            for weapon, _ in pairs(wrapConfig) do
+                applyWrap(weapon, "None")
+            end
+            wrapConfig = {}
+            saveWraps()
+        end, 11, true)
     end
 
     print("[rivals] Skins module initialized.")
