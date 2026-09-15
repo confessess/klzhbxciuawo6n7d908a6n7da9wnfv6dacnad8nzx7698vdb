@@ -31,6 +31,7 @@ local ScreenGui, MainFrame, TabBar, ContentHost
 local Pages = {}
 local ActiveTab = nil
 local IsOpen = false
+local IsLoading = true
 
 local function tween(obj, props)
     TweenService:Create(obj, TweenInfo.new(0.15), props):Play()
@@ -360,6 +361,7 @@ GUI.Components = Components
 
 -- Tab system
 local function switchTab(name)
+    if IsLoading then return end
     if ActiveTab == name then return end
     ActiveTab = name
     for tabName, page in pairs(Pages) do
@@ -662,6 +664,7 @@ local function build()
 end
 
 function GUI.ToggleMenu()
+    if IsLoading then return end
     IsOpen = not IsOpen
     GUI.UpdatePreviewVisibility()
     if IsOpen then
@@ -701,6 +704,21 @@ function GUI.Init(deps)
     if not ok then
         warn("[GUI] Error: " .. tostring(err))
     end
+
+    -- Mark GUI as loading, disable interaction briefly
+    IsLoading = true
+    if MainFrame then
+        MainFrame.Active = false
+    end
+
+    -- Re-enable after modules load
+    task.delay(2, function()
+        IsLoading = false
+        if MainFrame then
+            MainFrame.Active = true
+        end
+        print("[rivals] GUI ready.")
+    end)
 
     print("[rivals] GUI initialized.")
 end
