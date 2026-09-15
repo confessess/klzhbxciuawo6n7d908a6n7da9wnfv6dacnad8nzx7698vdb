@@ -634,6 +634,27 @@ function GUI.Init(deps)
     local ok, err = pcall(function()
         build()
         createPreviewWindows()
+        -- Register demo controls for testing
+        local combat = Pages["Combat"]
+        if combat then
+            Components.Section(combat, "Aimbot", 1)
+            Components.Toggle(combat, "Enable", false, function(v) print("Aimbot:", v) end, 2)
+            Components.Dropdown(combat, "Target Part", {"Head", "Chest", "Pelvis"}, "Head", function(v) print("Target:", v) end, 3)
+            Components.Slider(combat, "FOV", 0, 360, 90, function(v) print("FOV:", v) end, 4)
+        end
+
+        local visuals = Pages["Visuals"]
+        if visuals then
+            Components.Section(visuals, "ESP", 1)
+            Components.Toggle(visuals, "Enable Glow", false, function(v) print("ESP:", v) end, 2)
+        end
+
+        local settings = Pages["Settings"]
+        if settings then
+            Components.Button(settings, "Unload", function() 
+                if Core and Core.Unload then Core.Unload() end
+            end, 1, true)
+        end
     end)
     if not ok then
         warn("[GUI] Build error: " .. tostring(err))
@@ -653,26 +674,6 @@ function GUI.Init(deps)
             end
         end)
     end
-
-    -- Register demo controls for testing
-    local combat = Pages["Combat"]
-    Components.Section(combat, "Aimbot", 1)
-    Components.Toggle(combat, "Enable", false, function(v) print("Aimbot:", v) end, 2)
-    Components.Dropdown(combat, "Target Part", {"Head", "Chest", "Pelvis"}, "Head", function(v) print("Target:", v) end, 3)
-    Components.Slider(combat, "FOV", 0, 360, 90, function(v) print("FOV:", v) end, 4)
-
-    local visuals = Pages["Visuals"]
-    Components.Section(visuals, "ESP", 1)
-    Components.Toggle(visuals, "Enable Glow", false, function(v) print("ESP:", v) end, 2)
-
-    local skins = Pages["Skins"]
-    Components.Section(skins, "Skin Changer", 1)
-    Components.Dropdown(skins, "Weapon", {"None", "Assault Rifle", "Uzi"}, "None", function(v) print("Weapon:", v) end, 2)
-
-    local settings = Pages["Settings"]
-    Components.Button(settings, "Unload", function() 
-        if Core and Core.Unload then Core.Unload() end
-    end, 1, true)
 
     print("[rivals] GUI initialized.")
 end
