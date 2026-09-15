@@ -5,6 +5,9 @@
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
+-- GUI table (defined early to prevent nil errors)
+local GUI = {}
+
 -- Theme
 local Theme = {
     Background = Color3.fromRGB(26, 26, 36),
