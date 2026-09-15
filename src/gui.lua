@@ -659,13 +659,12 @@ local function build()
     createTab("Misc", Icons.Misc, 4)
     createTab("Settings", Icons.Settings, 5)
 
-    -- Keybind disabled for testing
-    -- UserInputService.InputBegan:Connect(function(input, gp)
-    --     if gp then return end
-    --     if input.KeyCode == Enum.KeyCode.RightControl then
-    --         GUI.ToggleMenu()
-    --     end
-    -- end)
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.RightControl then
+            GUI.ToggleMenu()
+        end
+    end)
 
     switchTab("Combat")
 end
@@ -719,7 +718,7 @@ function GUI.Init(deps)
 
     local ok, err = pcall(function()
         build()
-        -- createPreviewWindows() -- DISABLED for testing
+        createPreviewWindows()
     end)
     if not ok then
         warn("[GUI] Error: " .. tostring(err))
@@ -738,10 +737,6 @@ function GUI.Init(deps)
             MainFrame.Active = true
         end
         print("[rivals] GUI ready.")
-
-        -- Auto-open for testing
-        print("[rivals] Auto-opening GUI...")
-        GUI.ToggleMenu()
     end)
 
     print("[rivals] GUI initialized.")
