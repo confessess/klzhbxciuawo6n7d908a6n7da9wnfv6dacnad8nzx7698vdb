@@ -390,68 +390,83 @@ local function getWrapWeapons()
     return list
 end
 
-local function applyWrap(weaponName, wrapName)
-    debugPrint("Applying wrap: " .. weaponName .. " -> " .. wrapName)
+local function applyWrapToModel(targetWeapon, wrapName)
+    if not targetWeapon then return 0 end
 
-    local ok, err = pcall(function()
-        local folder = getWeaponsFolder()
-        if not folder then 
-            debugPrint("ERROR: No weapons folder")
-            return false 
+    local invisParts = {}
+    for _, desc in ipairs(targetWeapon:GetDescendants()) do
+        if desc:IsA("BasePart") and desc.Transparency == 1 then
+            table.insert(invisParts, desc)
         end
+    end
 
-        local weapon = folder:FindFirstChild(weaponName)
-        if not weapon then 
-            debugPrint("ERROR: Weapon not found: " .. weaponName)
-            return false 
+    local function isInvisible(part)
+        for _, inv in ipairs(invisParts) do
+            if part == inv then return true end
         end
+        return false
+    end
 
-        -- STEP 1: Find invisible parts (ZYPHERION method)
-        local invisParts = {}
-        for _, desc in ipairs(weapon:GetDescendants()) do
-            if desc:IsA("BasePart") and desc.Transparency == 1 then
-                table.insert(invisParts, desc)
-            end
-        end
-
-        local function isInvisible(part)
-            for _, inv in ipairs(invisParts) do
-                if part == inv then return true end
-            end
-            return false
-        end
-
-        -- STEP 2: Remove existing textures from ALL BaseParts
-        for _, desc in ipairs(weapon:GetDescendants()) do
-            if desc:IsA("BasePart") then
-                for _, child in ipairs(desc:GetChildren()) do
-                    if child:IsA("Texture") then 
-                        child:Destroy() 
-                    end
+    for _, desc in ipairs(targetWeapon:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            for _, child in ipairs(desc:GetChildren()) do
+                if child:IsA("Texture") then 
+                    child:Destroy() 
                 end
             end
         end
+    end
 
-        -- STEP 3: Apply new wrap to ALL BaseParts (skip invisible)
-        if wrapName ~= "None" then
-            local wrapFolder = LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
-            if wrapFolder then
-                debugPrint("Found wrap folder: " .. wrapFolder.Name)
-                local applied = 0
-                for _, tex in ipairs(wrapFolder:GetChildren()) do
-                    if tex:IsA("Texture") then
-                        for _, desc in ipairs(weapon:GetDescendants()) do
-                            if desc:IsA("BasePart") and not isInvisible(desc) then
-                                local clone = tex:Clone()
-                                clone.Parent = desc
-                                applied = applied + 1
-                            end
+    local applied = 0
+    if wrapName ~= "None" and wrapName ~= "none" then
+        local wrapFolder = LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
+        if wrapFolder then
+            for _, tex in ipairs(wrapFolder:GetChildren()) do
+                if tex:IsA("Texture") then
+                    for _, desc in ipairs(targetWeapon:GetDescendants()) do
+                        if desc:IsA("BasePart") and not isInvisible(desc) then
+                            local clone = tex:Clone()
+                            clone.Parent = desc
+                            applied = applied + 1
                         end
                     end
                 end
-                debugPrint("Wrap applied to " .. applied .. " parts!")
-            else
-                debugPrint("ERROR: Wrap not found: " .. wrapName)
+            end
+        end
+    end
+    return applied
+end
+
+local function applyWrap(weaponName, wrapName)
+    debugPrint("Applying wrap: " .. weaponName .. " -> " .. wrapName)
+
+    if not weaponName or weaponName == "None" or weaponName == "none" then
+        debugPrint("ERROR: Invalid weapon name")
+        return false
+    end
+
+    local ok, err = pcall(function()
+        -- apply to template (for future equips)
+        local folder = getWeaponsFolder()
+        if folder then
+            local template = folder:FindFirstChild(weaponName)
+            if template then
+                local count = applyWrapToModel(template, wrapName)
+                debugPrint("Template: applied " .. count .. " textures")
+            end
+        end
+
+        -- apply to active viewmodel (for right now)
+        local vmFolder = workspace:FindFirstChild("ViewModels")
+        if vmFolder then
+            local fp = vmFolder:FindFirstChild("FirstPerson")
+            if fp then
+                for _, child in ipairs(fp:GetChildren()) do
+                    if child.Name:find(weaponName) then
+                        local count = applyWrapToModel(child, wrapName)
+                        debugPrint("Active viewmodel: applied " .. count .. " textures")
+                    end
+                end
             end
         end
 
