@@ -563,14 +563,21 @@ function Skins.Init(deps)
         GUI.Components.Section(page, "Wrap Changer", 7)
 
         GUI.Components.Dropdown(page, "Weapon", getWrapWeapons(), selectedWrapWeapon, function(v)
+            print("[WRAP GUI] Selected wrap weapon: " .. tostring(v))
             selectedWrapWeapon = v
         end, 8)
 
         GUI.Components.Dropdown(page, "Wrap", ALL_WRAPS, selectedWrap, function(v)
+            print("[WRAP GUI] Selected wrap: " .. tostring(v))
+            print("[WRAP GUI] Selected weapon: " .. tostring(selectedWrapWeapon))
             selectedWrap = v
             if selectedWrapWeapon ~= "None" and v ~= "None" then
-                applyWrap(selectedWrapWeapon, v)
+                print("[WRAP GUI] Calling applyWrap...")
+                local success = applyWrap(selectedWrapWeapon, v)
+                print("[WRAP GUI] applyWrap returned: " .. tostring(success))
                 saveWraps()
+            else
+                print("[WRAP GUI] Skipped - weapon or wrap is None")
             end
         end, 9)
 
