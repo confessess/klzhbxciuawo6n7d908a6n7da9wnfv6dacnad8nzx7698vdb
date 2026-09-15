@@ -392,40 +392,62 @@ end
 
 local function applyWrap(weaponName, wrapName)
     debugPrint("Applying wrap: " .. weaponName .. " -> " .. wrapName)
-    local folder = getWeaponsFolder()
-    if not folder then return false end
-    local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then return false end
 
-    -- Remove existing textures
-    for _, desc in ipairs(weapon:GetDescendants()) do
-        if desc:IsA("BasePart") then
-            for _, child in ipairs(desc:GetChildren()) do
-                if child:IsA("Texture") then child:Destroy() end
-            end
+    local ok, err = pcall(function()
+        local folder = getWeaponsFolder()
+        if not folder then 
+            debugPrint("ERROR: No weapons folder")
+            return false 
         end
-    end
 
-    -- Apply new wrap
-    if wrapName ~= "None" then
-        local ok, wrapFolder = pcall(function()
-            return LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
-        end)
-        if ok and wrapFolder then
-            for _, tex in ipairs(wrapFolder:GetChildren()) do
-                if tex:IsA("Texture") then
-                    for _, desc in ipairs(weapon:GetDescendants()) do
-                        if desc:IsA("BasePart") then
-                            tex:Clone().Parent = desc
-                        end
+        local weapon = folder:FindFirstChild(weaponName)
+        if not weapon then 
+            debugPrint("ERROR: Weapon not found: " .. weaponName)
+            return false 
+        end
+
+        -- Remove existing textures
+        for _, desc in ipairs(weapon:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                for _, child in ipairs(desc:GetChildren()) do
+                    if child:IsA("Texture") then 
+                        child:Destroy() 
                     end
                 end
             end
         end
+
+        -- Apply new wrap
+        if wrapName ~= "None" then
+            local wrapFolder = LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
+            if wrapFolder then
+                debugPrint("Found wrap folder: " .. wrapFolder.Name)
+                for _, tex in ipairs(wrapFolder:GetChildren()) do
+                    if tex:IsA("Texture") then
+                        -- Apply to all MeshParts in weapon
+                        for _, desc in ipairs(weapon:GetDescendants()) do
+                            if desc:IsA("MeshPart") then
+                                local clone = tex:Clone()
+                                clone.Parent = desc
+                            end
+                        end
+                    end
+                end
+                debugPrint("Wrap applied!")
+            else
+                debugPrint("ERROR: Wrap not found: " .. wrapName)
+            end
+        end
+
+        wrapConfig[weaponName] = wrapName
+        return true
+    end)
+
+    if not ok then
+        debugPrint("WRAP ERROR: " .. tostring(err))
+        return false
     end
 
-    wrapConfig[weaponName] = wrapName
-    debugPrint("Wrap applied!")
     return true
 end
 
@@ -494,8 +516,11 @@ function Skins.Init(deps)
 
         GUI.Components.Dropdown(page, "Skin", function() return skinOptions end, selectedSkin, function(v)
             selectedSkin = v
+            debugPrint("Skin selected: " .. tostring(v))
             if selectedWeapon ~= "None" and v ~= "None" then
+                -- Update preview first
                 updatePreview(selectedWeapon, v)
+                -- Then apply
                 local success = applySkin(selectedWeapon, v)
                 if success then
                     saveSkins()
