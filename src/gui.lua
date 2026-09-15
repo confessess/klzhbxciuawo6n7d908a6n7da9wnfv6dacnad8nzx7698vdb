@@ -389,10 +389,6 @@ local function switchTab(name)
             end
         end
     end
-    -- DYNAMIC PREVIEW FIX: update preview visibility on tab switch
-    if GUI.UpdatePreviewVisibility then
-        GUI.UpdatePreviewVisibility()
-    end
 end
 
 local function createTab(name, iconId, order)
@@ -463,26 +459,36 @@ end
 local PreviewGui, SkinPreviewWindow, ESPPreviewWindow
 
 local function updatePreviewPositions()
-    if not MainFrame then return end
-    local pos = MainFrame.AbsolutePosition
-    local size = MainFrame.AbsoluteSize
-    if ESPPreviewWindow then
-        ESPPreviewWindow.Position = UDim2.new(0, pos.X - 225, 0, pos.Y)
-        ESPPreviewWindow.Size = UDim2.fromOffset(220, size.Y)
-    end
-    if SkinPreviewWindow then
-        SkinPreviewWindow.Position = UDim2.new(0, pos.X + size.X + 5, 0, pos.Y)
+    local ok, err = pcall(function()
+        if not MainFrame then return end
+        local pos = MainFrame.AbsolutePosition
+        local size = MainFrame.AbsoluteSize
+        if ESPPreviewWindow then
+            ESPPreviewWindow.Position = UDim2.new(0, pos.X - 225, 0, pos.Y)
+            ESPPreviewWindow.Size = UDim2.fromOffset(220, size.Y)
+        end
+        if SkinPreviewWindow then
+            SkinPreviewWindow.Position = UDim2.new(0, pos.X + size.X + 5, 0, pos.Y)
+        end
+    end)
+    if not ok then
+        warn("[GUI] UpdatePreviewPositions error: " .. tostring(err))
     end
 end
 
 GUI.UpdatePreviewVisibility = function()
-    if GUI.SkinPreviewFrame then
-        GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and IsOpen
+    local ok, err = pcall(function()
+        if GUI.SkinPreviewFrame then
+            GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and IsOpen
+        end
+        if GUI.ESPPreviewFrame then
+            GUI.ESPPreviewFrame.Visible = (ActiveTab == "Visuals") and IsOpen
+        end
+        updatePreviewPositions()
+    end)
+    if not ok then
+        warn("[GUI] UpdatePreviewVisibility error: " .. tostring(err))
     end
-    if GUI.ESPPreviewFrame then
-        GUI.ESPPreviewFrame.Visible = (ActiveTab == "Visuals") and IsOpen
-    end
-    updatePreviewPositions()
 end
 
 local function createPreviewWindows()
@@ -681,120 +687,43 @@ local function build()
     switchTab("Combat")
 end
 
-
--- ============================================================
--- Preview model management (DYNAMIC PREVIEW FIX)
--- ============================================================
-
-local previewRotation = 0
-local previewConnection = nil
-
-function GUI.SetSkinPreviewModel(model)
-    if not GUI.SkinPreviewViewport then return end
-    local worldModel = GUI.SkinPreviewViewport:FindFirstChildWhichIsA("WorldModel")
-    if not worldModel then
-        worldModel = Instance.new("WorldModel")
-        worldModel.Parent = GUI.SkinPreviewViewport
-    end
-    for _, child in ipairs(worldModel:GetChildren()) do
-        child:Destroy()
-    end
-    if not model then return end
-    local clone = model:Clone()
-    clone.Parent = worldModel
-    local cf, size = clone:GetBoundingBox()
-    local maxDim = math.max(size.X, size.Y, size.Z)
-    local distance = maxDim * 0.7
-    GUI.SkinPreviewCamera.CFrame = CFrame.new(
-        cf.Position + Vector3.new(distance, distance * 0.3, distance),
-        cf.Position
-    )
-end
-
-function GUI.SetESPPreviewModel(model)
-    if not GUI.ESPPreviewViewport then return end
-    local worldModel = GUI.ESPPreviewViewport:FindFirstChildWhichIsA("WorldModel")
-    if not worldModel then
-        worldModel = Instance.new("WorldModel")
-        worldModel.Parent = GUI.ESPPreviewViewport
-    end
-    for _, child in ipairs(worldModel:GetChildren()) do
-        child:Destroy()
-    end
-    if not model then return end
-    local clone = model:Clone()
-    clone.Parent = worldModel
-    local cf, size = clone:GetBoundingBox()
-    local maxDim = math.max(size.X, size.Y, size.Z)
-    local distance = maxDim * 1.2
-    GUI.ESPPreviewCamera.CFrame = CFrame.new(
-        cf.Position + Vector3.new(distance, distance * 0.2, distance),
-        cf.Position
-    )
-end
-
--- rotation loop for skin preview (throttled to 30fps)
-local function startPreviewRotation()
-    if previewConnection then previewConnection:Disconnect() end
-    local lastTick = tick()
-    previewConnection = game:GetService("RunService").RenderStepped:Connect(function()
-        local now = tick()
-        if now - lastTick < 0.033 then return end
-        lastTick = now
-        if GUI.SkinPreviewFrame and GUI.SkinPreviewFrame.Visible and GUI.SkinPreviewViewport then
-            local worldModel = GUI.SkinPreviewViewport:FindFirstChildWhichIsA("WorldModel")
-            if worldModel then
-                local model = worldModel:FindFirstChildWhichIsA("Model")
-                if model then
-                    previewRotation = previewRotation + 0.5
-                    local cf, size = model:GetBoundingBox()
-                    local maxDim = math.max(size.X, size.Y, size.Z)
-                    local distance = maxDim * 0.7
-                    local angle = math.rad(previewRotation)
-                    GUI.SkinPreviewCamera.CFrame = CFrame.new(
-                        cf.Position + Vector3.new(
-                            math.sin(angle) * distance,
-                            distance * 0.3,
-                            math.cos(angle) * distance
-                        ),
-                        cf.Position
-                    )
-                end
-            end
-        end
-    end)
-end
-
--- expose UpdatePreviewPositions
-GUI.UpdatePreviewPositions = updatePreviewPositions
-
 function GUI.ToggleMenu()
     if IsLoading then 
         print("[GUI] Still loading, please wait...")
         return 
     end
 
-    local ok, err = pcall(function()
-        IsOpen = not IsOpen
+    -- Step 1: flip state
+    IsOpen = not IsOpen
+    print("[GUI] ToggleMenu called, IsOpen = " .. tostring(IsOpen))
 
-        -- Update preview visibility safely
+    -- Step 2: update previews (wrapped)
+    local ok1, err1 = pcall(function()
         if GUI.UpdatePreviewVisibility then
             GUI.UpdatePreviewVisibility()
         end
+    end)
+    if not ok1 then
+        warn("[GUI] Preview visibility error: " .. tostring(err1))
+    end
 
+    -- Step 3: show/hide main frame (wrapped)
+    local ok2, err2 = pcall(function()
+        if not MainFrame then
+            warn("[GUI] MainFrame is nil!")
+            return
+        end
         if IsOpen then
-            -- Simple show, no animation
             MainFrame.Visible = true
-            MainFrame.Size = UDim2.fromOffset(780, 520)
         else
-            -- Simple hide, no animation
             MainFrame.Visible = false
         end
     end)
-
-    if not ok then
-        warn("[GUI] Toggle error: " .. tostring(err))
+    if not ok2 then
+        warn("[GUI] MainFrame visibility error: " .. tostring(err2))
     end
+
+    print("[GUI] Toggle complete")
 end
 
 function GUI.IsOpen()
@@ -806,10 +735,6 @@ function GUI.GetPage(name)
 end
 
 function GUI.Cleanup()
-    if previewConnection then
-        previewConnection:Disconnect()
-        previewConnection = nil
-    end
     if ScreenGui then ScreenGui:Destroy() end
     if PreviewGui then PreviewGui:Destroy() end
 end
@@ -843,9 +768,6 @@ function GUI.Init(deps)
         print("[rivals] GUI READY - You can now press RightCtrl")
         print("================================")
     end)
-
-    -- DYNAMIC PREVIEW FIX: start rotation loop
-    startPreviewRotation()
 
     print("[rivals] GUI initialized.")
 end
