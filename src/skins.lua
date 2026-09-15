@@ -1,6 +1,5 @@
 -- ============================================================
--- Rivals Modular -- Skins (Complete mapping + Fixed preview)
--- All skins from game, proper filtering
+-- Rivals Modular -- Skins (Uses GUI's preview frame)
 -- ============================================================
 
 local Skins = {}
@@ -8,12 +7,12 @@ local Skins = {}
 local Config, Utils, GUI, Core
 local Players, LocalPlayer, HttpService, RunService
 
--- COMPLETE skin mapping based on actual game data
+-- COMPLETE skin mapping
 local WEAPON_SKINS = {
-    ["Assault Rifle"] = {"AK-47", "Boneclaw Rifle", "Augmented Rifle", "Gingerbread Augmented Rifle", "Soul Rifle", "Glorious Burst Rifle", "Plasma Wildcat"},
+    ["Assault Rifle"] = {"AK-47", "Boneclaw Rifle", "Augmented Rifle", "Gingerbread Augmented Rifle", "Soul Rifle"},
     ["Battle Axe"] = {"The Shred", "Nordic Axe", "Ban Axe", "Cerulean Axe", "Mimic Axe"},
     ["Bow"] = {"Bat Bow", "Compound Bow", "Raven Bow", "Dream Bow", "Frostbite Bow"},
-    ["Burst Rifle"] = {"Aqua Burst", "Electro Rifle", "Pixel Burst", "Pine Burst", "Spectral Burst", "Bullpup Burst", "Glorious Burst Rifle"},
+    ["Burst Rifle"] = {"Aqua Burst", "Electro Rifle", "Pixel Burst", "Pine Burst", "Spectral Burst", "Bullpup Burst"},
     ["Chainsaw"] = {"Blobsaw", "Buzzsaw", "Festive Buzzsaw", "Gunsaw"},
     ["Crossbow"] = {"Frostbite Crossbow", "Pixel Crossbow", "Harpoon Crossbow", "Violin Crossbow"},
     ["Daggers"] = {"Aces", "Cookies", "Bat Daggers", "Balisong", "Shurikens", "Handsaws"},
@@ -76,9 +75,6 @@ local skinOptions = {"Select a weapon first"}
 
 local SKINS_FILE = "RivalsModular/skins.json"
 
-local previewFrame = nil
-local previewViewport = nil
-local previewCamera = nil
 local previewModel = nil
 local previewRotation = 0
 
@@ -136,10 +132,7 @@ local function applySkin(weaponName, skinName)
             break
         end
     end
-    if not skinModel then 
-        debugPrint("Skin not found: " .. skinName)
-        return false 
-    end
+    if not skinModel then return false end
 
     saveOriginal(weaponName)
     weapon:ClearAllChildren()
@@ -175,99 +168,10 @@ local function saveSkins()
     end)
 end
 
--- ============================================================
--- Preview (Fixed - parented to ContentHost)
--- ============================================================
-
-local function createPreview()
-    -- Find the main GUI's Content frame
-    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-    local mainGui = playerGui:FindFirstChild("RivalsModularGUI")
-    if not mainGui then 
-        debugPrint("ERROR: Main GUI not found")
-        return 
-    end
-
-    local menu = mainGui:FindFirstChild("Menu")
-    if not menu then 
-        debugPrint("ERROR: Menu not found")
-        return 
-    end
-
-    local content = menu:FindFirstChild("Content")
-    if not content then 
-        debugPrint("ERROR: Content not found")
-        return 
-    end
-
-    previewFrame = Instance.new("Frame")
-    previewFrame.Name = "SkinPreview"
-    previewFrame.Size = UDim2.new(0, 180, 0, 220)
-    previewFrame.Position = UDim2.new(1, -190, 0, 10)
-    previewFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    previewFrame.BorderSizePixel = 0
-    previewFrame.Visible = false
-    previewFrame.ZIndex = 50
-    previewFrame.Parent = content
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = previewFrame
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(124, 108, 255)
-    stroke.Thickness = 2
-    stroke.Transparency = 0.4
-    stroke.Parent = previewFrame
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 24)
-    title.BackgroundTransparency = 1
-    title.Text = "PREVIEW"
-    title.TextColor3 = Color3.fromRGB(124, 108, 255)
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 11
-    title.ZIndex = 51
-    title.Parent = previewFrame
-
-    previewViewport = Instance.new("ViewportFrame")
-    previewViewport.Size = UDim2.new(1, -12, 1, -60)
-    previewViewport.Position = UDim2.new(0, 6, 0, 28)
-    previewViewport.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
-    previewViewport.BackgroundTransparency = 0
-    previewViewport.BorderSizePixel = 0
-    previewViewport.ZIndex = 51
-    previewViewport.Parent = previewFrame
-
-    local vpCorner = Instance.new("UICorner")
-    vpCorner.CornerRadius = UDim.new(0, 8)
-    vpCorner.Parent = previewViewport
-
-    previewCamera = Instance.new("Camera")
-    previewCamera.Parent = previewViewport
-    previewViewport.CurrentCamera = previewCamera
-
-    local light = Instance.new("PointLight")
-    light.Brightness = 3
-    light.Range = 20
-    light.Parent = previewViewport
-
-    local disclaimer = Instance.new("TextLabel")
-    disclaimer.Size = UDim2.new(1, -12, 0, 26)
-    disclaimer.Position = UDim2.new(0, 6, 1, -30)
-    disclaimer.BackgroundTransparency = 1
-    disclaimer.Text = "Skins apply after death"
-    disclaimer.TextColor3 = Color3.fromRGB(255, 180, 80)
-    disclaimer.Font = Enum.Font.GothamMedium
-    disclaimer.TextSize = 10
-    disclaimer.ZIndex = 51
-    disclaimer.Parent = previewFrame
-
-    debugPrint("Preview created")
-end
-
+-- Use GUI's preview
 local function updatePreview(weaponName, skinName)
-    if not previewViewport then return end
+    if not GUI.SkinPreviewViewport then return end
+
     if previewModel then
         previewModel:Destroy()
         previewModel = nil
@@ -294,14 +198,14 @@ local function updatePreview(weaponName, skinName)
     if not source then return end
 
     previewModel = source:Clone()
-    previewModel.Parent = previewViewport
+    previewModel.Parent = GUI.SkinPreviewViewport
 
     local cf, size = previewModel:GetBoundingBox()
     local center = cf.Position
     local maxDim = math.max(size.X, size.Y, size.Z)
     local distance = maxDim * 0.7
 
-    previewCamera.CFrame = CFrame.new(
+    GUI.SkinPreviewCamera.CFrame = CFrame.new(
         center + Vector3.new(distance, distance * 0.5, distance),
         center
     )
@@ -311,8 +215,8 @@ end
 
 local function startPreviewRotation()
     RunService.RenderStepped:Connect(function(dt)
-        if not previewModel or not previewCamera then return end
-        if not previewFrame or not previewFrame.Visible then return end
+        if not previewModel or not GUI.SkinPreviewCamera then return end
+        if not GUI.SkinPreviewFrame or not GUI.SkinPreviewFrame.Visible then return end
         if not Core.MenuOpen then return end
 
         previewRotation = previewRotation + dt * 0.5
@@ -325,24 +229,10 @@ local function startPreviewRotation()
         local x = math.cos(angle) * distance
         local z = math.sin(angle) * distance
 
-        previewCamera.CFrame = CFrame.new(
+        GUI.SkinPreviewCamera.CFrame = CFrame.new(
             center + Vector3.new(x, distance * 0.5, z),
             center
         )
-    end)
-end
-
-local function startTabChecker()
-    task.spawn(function()
-        while true do
-            task.wait(0.1)
-            if previewFrame and Core.GUI then
-                local skinsPage = Core.GUI.GetPage and Core.GUI.GetPage("Skins")
-                if skinsPage then
-                    previewFrame.Visible = skinsPage.Visible and Core.MenuOpen
-                end
-            end
-        end
     end)
 end
 
@@ -361,9 +251,7 @@ function Skins.Init(deps)
     task.delay(0.5, function()
         getWeaponsFolder()
         getAllSkinCases()
-        createPreview()
         startPreviewRotation()
-        startTabChecker()
     end)
 
     local page = GUI.GetPage and GUI.GetPage("Skins")
@@ -375,8 +263,15 @@ function Skins.Init(deps)
             function() return selectedWeapon end,
             function(v)
                 selectedWeapon = v
-                if v ~= "None" and WEAPON_SKINS[v] then
-                    skinOptions = WEAPON_SKINS[v]
+                if v ~= "None" then
+                    -- Show ALL skins for testing
+                    skinOptions = {}
+                    for _, case in ipairs(getAllSkinCases()) do
+                        for _, skin in ipairs(case:GetChildren()) do
+                            table.insert(skinOptions, skin.Name)
+                        end
+                    end
+                    table.sort(skinOptions)
                     selectedSkin = "None"
                     updatePreview(v, nil)
                 else
@@ -425,8 +320,8 @@ function Skins.Cleanup()
     for weapon, _ in pairs(currentSkins) do
         resetWeapon(weapon)
     end
-    if previewFrame then
-        previewFrame:Destroy()
+    if previewModel then
+        previewModel:Destroy()
     end
 end
 

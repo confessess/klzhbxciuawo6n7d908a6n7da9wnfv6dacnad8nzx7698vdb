@@ -1,5 +1,7 @@
 -- ============================================================
--- Rivals Modular -- GUI (Fixed dropdown SetValues)
+-- Rivals Modular -- GUI
+-- Sleek dark sidebar menu
+-- Tabs: Legit, Rage, Visuals, Player, Teleport, World, Skins, Misc, Settings
 -- ============================================================
 
 local TweenService        = game:GetService("TweenService")
@@ -102,6 +104,11 @@ local function switchTab(name)
     ActiveTab = name
     for tabName, page in pairs(Pages) do
         page.Visible = (tabName == name)
+    end
+
+    -- Show/hide skin preview
+    if GUI.SkinPreviewFrame then
+        GUI.SkinPreviewFrame.Visible = (name == "Skins") and IsOpen
     end
     for _, child in ipairs(Sidebar:GetChildren()) do
         if child:IsA("TextButton") and child.Name:sub(1, 4) == "Tab_" then
@@ -417,14 +424,12 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
 
     local expanded  = false
     local animating = false
-    local currentOptions = options  -- Store reference
 
     local function rebuild()
         for _, child in ipairs(listFrame:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
-        local opts = currentOptions()  -- Call fresh each time
-        for i, opt in ipairs(opts) do
+        for i, opt in ipairs(options()) do
             local optBtn = Instance.new("TextButton")
             optBtn.Size             = UDim2.new(1, 0, 0, 28)
             optBtn.BackgroundColor3 = Theme.Element
@@ -472,8 +477,7 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
         if expanded then
             rebuild()
             listFrame.Visible = true
-            local opts = currentOptions()
-            local h = #opts * 30 + 8
+            local h = #options() * 30 + 8
             tween(listFrame, TWEEN_MED, { Size = UDim2.new(1, 0, 0, h) })
             tween(arrow, TWEEN_MED, { Rotation = 180 })
             task.delay(0.22, function() animating = false end)
@@ -494,13 +498,9 @@ function GUI.AddDropdown(page, label, options, getValue, setValue, order)
     -- Return object with SetValues/SetValue for dynamic updates
     local dropdownObj = {
         SetValues = function(newOpts)
-            -- Replace the options function
-            currentOptions = function() return newOpts end
-            -- Update value label
-            local val = getValue()
-            if val then
-                valueLbl.Text = tostring(val)
-            end
+            -- Store new options, rebuild if expanded
+            options = function() return newOpts end
+            if expanded then rebuild() end
         end,
         SetValue = function(val)
             setValue(val)
@@ -596,6 +596,11 @@ end
 local function setOpen(state)
     IsOpen = state
     if Core then Core.MenuOpen = state end
+
+    -- Show/hide skin preview
+    if GUI.SkinPreviewFrame then
+        GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and state
+    end
     if state then
         MenuFrame.Visible = true
         Watermark.Visible = true
@@ -740,6 +745,76 @@ local function build()
     ContentHost.BorderSizePixel  = 0
     ContentHost.Parent           = MenuFrame
 
+    -- Skin Preview Frame (shows only on Skins tab)
+    local SkinPreviewFrame = Instance.new("Frame")
+    SkinPreviewFrame.Name = "SkinPreview"
+    SkinPreviewFrame.Size = UDim2.new(0, 180, 0, 220)
+    SkinPreviewFrame.Position = UDim2.new(1, -190, 0, 10)
+    SkinPreviewFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    SkinPreviewFrame.BorderSizePixel = 0
+    SkinPreviewFrame.Visible = false
+    SkinPreviewFrame.ZIndex = 50
+    SkinPreviewFrame.Parent = ContentHost
+
+    local previewCorner = Instance.new("UICorner")
+    previewCorner.CornerRadius = UDim.new(0, 10)
+    previewCorner.Parent = SkinPreviewFrame
+
+    local previewStroke = Instance.new("UIStroke")
+    previewStroke.Color = Color3.fromRGB(124, 108, 255)
+    previewStroke.Thickness = 2
+    previewStroke.Transparency = 0.4
+    previewStroke.Parent = SkinPreviewFrame
+
+    local previewTitle = Instance.new("TextLabel")
+    previewTitle.Size = UDim2.new(1, 0, 0, 24)
+    previewTitle.BackgroundTransparency = 1
+    previewTitle.Text = "PREVIEW"
+    previewTitle.TextColor3 = Color3.fromRGB(124, 108, 255)
+    previewTitle.Font = Enum.Font.GothamBold
+    previewTitle.TextSize = 11
+    previewTitle.ZIndex = 51
+    previewTitle.Parent = SkinPreviewFrame
+
+    local PreviewViewport = Instance.new("ViewportFrame")
+    PreviewViewport.Name = "Viewport"
+    PreviewViewport.Size = UDim2.new(1, -12, 1, -60)
+    PreviewViewport.Position = UDim2.new(0, 6, 0, 28)
+    PreviewViewport.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
+    PreviewViewport.BackgroundTransparency = 0
+    PreviewViewport.BorderSizePixel = 0
+    PreviewViewport.ZIndex = 51
+    PreviewViewport.Parent = SkinPreviewFrame
+
+    local vpCorner = Instance.new("UICorner")
+    vpCorner.CornerRadius = UDim.new(0, 8)
+    vpCorner.Parent = PreviewViewport
+
+    local PreviewCamera = Instance.new("Camera")
+    PreviewCamera.Parent = PreviewViewport
+    PreviewViewport.CurrentCamera = PreviewCamera
+
+    local previewLight = Instance.new("PointLight")
+    previewLight.Brightness = 3
+    previewLight.Range = 20
+    previewLight.Parent = PreviewViewport
+
+    local previewDisclaimer = Instance.new("TextLabel")
+    previewDisclaimer.Size = UDim2.new(1, -12, 0, 26)
+    previewDisclaimer.Position = UDim2.new(0, 6, 1, -30)
+    previewDisclaimer.BackgroundTransparency = 1
+    previewDisclaimer.Text = "Skins apply after death"
+    previewDisclaimer.TextColor3 = Color3.fromRGB(255, 180, 80)
+    previewDisclaimer.Font = Enum.Font.GothamMedium
+    previewDisclaimer.TextSize = 10
+    previewDisclaimer.ZIndex = 51
+    previewDisclaimer.Parent = SkinPreviewFrame
+
+    -- Expose for skins module
+    GUI.SkinPreviewFrame = SkinPreviewFrame
+    GUI.SkinPreviewViewport = PreviewViewport
+    GUI.SkinPreviewCamera = PreviewCamera
+
     createTab("Legit",     1)
     createTab("Rage",      2)
     createTab("Visuals",   3)
@@ -804,6 +879,7 @@ function GUI.Init(deps)
         if not inside then setOpen(false) end
     end)
 
+    -- Register Visuals tab ESP controls
     local visuals = Pages["Visuals"]
     if visuals then
         GUI.AddSection(visuals, "ESP", 1)
@@ -819,20 +895,30 @@ function GUI.Init(deps)
         GUI.AddToggle(visuals, "Distance",
             function() return Config.Get("ESP_Studs") end,
             function(v) Config.Set("ESP_Studs", v) end, 5)
+        GUI.AddToggle(visuals, "Tracer",
+            function() return Config.Get("ESP_Tracer") end,
+            function(v) Config.Set("ESP_Tracer", v) end, 6)
         GUI.AddToggle(visuals, "Health Bar",
             function() return Config.Get("ESP_HealthBar") end,
-            function(v) Config.Set("ESP_HealthBar", v) end, 6)
+            function(v) Config.Set("ESP_HealthBar", v) end, 7)
+        GUI.AddToggle(visuals, "Boxes",
+            function() return Config.Get("ESP_Boxes") end,
+            function(v) Config.Set("ESP_Boxes", v) end, 8)
+        GUI.AddToggle(visuals, "Box Filled",
+            function() return Config.Get("ESP_BoxFilled") end,
+            function(v) Config.Set("ESP_BoxFilled", v) end, 9)
         GUI.AddToggle(visuals, "Team Check",
             function() return Config.Get("ESP_TeamCheck") end,
-            function(v) Config.Set("ESP_TeamCheck", v) end, 7)
+            function(v) Config.Set("ESP_TeamCheck", v) end, 10)
         GUI.AddSlider(visuals, "Max Distance", 100, 2000,
             function() return Config.Get("ESP_MaxDistance") end,
-            function(v) Config.Set("ESP_MaxDistance", v) end, 8)
+            function(v) Config.Set("ESP_MaxDistance", v) end, 11)
         GUI.AddSlider(visuals, "Box Transparency", 0, 100,
             function() return math.floor((Config.Get("ESP_BoxTransparency") or 0.5) * 100) end,
-            function(v) Config.Set("ESP_BoxTransparency", v / 100) end, 9)
+            function(v) Config.Set("ESP_BoxTransparency", v / 100) end, 12)
     end
 
+    -- Settings tab
     local settings = Pages["Settings"]
     if settings then
         GUI.AddSection(settings, "Menu", 1)
