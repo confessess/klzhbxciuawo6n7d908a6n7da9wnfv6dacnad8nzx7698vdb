@@ -1,5 +1,6 @@
 -- ============================================================
--- Rivals Modular -- Skins (Fixed with viewmodel refresh)
+-- Rivals Modular -- Skins (Complete with wrap changer)
+-- Dynamically discovers skins from game files
 -- ============================================================
 
 local Skins = {}
@@ -7,59 +8,37 @@ local Skins = {}
 local Config, Utils, GUI, Core
 local Players, LocalPlayer, HttpService
 
-local WEAPON_SKINS = {
-    ["Assault Rifle"] = {"AK-47", "AKEY-47", "Boneclaw Rifle", "AUG", "Phoenix Rifle", "Gingerbread AUG", "Tommy Gun", "Keyper", "Hyper Sniper", "Pixel Sniper"},
-    ["Battle Axe"] = {"The Shred", "Nordic Axe", "Ban Axe"},
-    ["Bow"] = {"Bat Bow"},
-    ["Burst Rifle"] = {"Aqua Burst", "Electro Rifle", "Pixel Burst", "Pine Burst", "Spectral Burst"},
-    ["Chainsaw"] = {"Blobsaw"},
-    ["Crossbow"] = {"Frostbite Crossbow", "Pixel Crossbow", "Harpoon Crossbow"},
-    ["Daggers"] = {"Aces", "Cookies"},
-    ["Energy Rifle"] = {"2025 Energy Rifle", "Apex Rifle", "Hacker Rifle", "Hydro Rifle"},
-    ["Energy Pistols"] = {"2025 Energy Pistols", "Apex Pistols", "Hacker Pistols", "Void Pistols"},
-    ["Exogun"] = {"Ray Gun", "Singularity", "Wondergun", "Midnight Festive Exogun", "Exogourd"},
-    ["Fists"] = {"Boxing Gloves", "Brass Knuckles", "Pumpkin Claws", "Festive Fists"},
-    ["Flamethrower"] = {"Lamethrower", "Pixel Flamethrower", "Snowblower", "Jack O'Thrower"},
-    ["Flare Gun"] = {"Dynamite Gun", "Firework Gun", "Wrapped Flare Gun", "Vexed Flare Gun"},
-    ["Freeze Ray"] = {"Bubble Ray", "Temporal Ray", "Spider Ray", "Wrapped Freeze Ray"},
-    ["Grenade"] = {"Water Balloon", "Whoopee Cushion", "Soul Grenade", "Jingle Grenade", "Dynamite"},
-    ["Grenade Launcher"] = {"Swashbuckler", "Uranium Launcher", "Skull Launcher", "Snowball Launcher"},
-    ["Gunblade"] = {"Hyper Gunblade", "Elf's Gunblade", "Crude Gunblade"},
-    ["Handgun"] = {"Blaster", "Pixel Handgun", "Pumpkin Handgun", "Gingerbread Handgun", "Gumball Handgun"},
-    ["Katana"] = {"Lightning Bolt", "Saber", "Pixel Katana", "Devil's Trident", "2025 Katana", "Keytana", "Stellar Katana"},
-    ["Knife"] = {"Chancla", "Karambit", "Machete", "Candy Cane"},
-    ["Minigun"] = {"Lasergun 3000", "Pixel Minigun", "Wrapped Minigun", "Pumpkin Minigun"},
-    ["Molotov"] = {"Coffee", "Torch", "Hexxed Candle", "Hot Coals"},
-    ["Paintball Gun"] = {"Boba Gun", "Slime Gun", "Snowball Gun", "Brain Gun"},
-    ["Revolver"] = {"Boneclaw Revolver"},
-    ["RPG"] = {"Nuke Launcher"},
-    ["Riot Shield"] = {"Door", "Sled"},
-    ["Scythe"] = {"Anchor", "Keythe", "Scythe of Death", "Bat Scythe", "Cryo Scythe"},
-    ["Shorty"] = {"Lovely Shorty", "Not So Shorty", "Too Shorty", "Demon Shorty", "Wrapped Shorty", "Balloon Shorty"},
-    ["Shotgun"] = {"Balloon Shotgun", "Hyper Shotgun", "Wrapped Shotgun", "Broomstick", "Cactus Shotgun"},
-    ["Slingshot"] = {"Goalpost", "Stick", "Reindeer Slingshot", "Boneshot"},
-    ["Smoke Grenade"] = {"Balance", "Emoji Cloud", "Eyeball", "Snowglobe"},
-    ["Sniper"] = {"Hyper Sniper", "Pixel Sniper", "Keyper", "Gingerbread Sniper", "Eyething Sniper"},
-    ["Subspace Tripmine"] = {"Don't Press", "Spring", "Dev-in-the-Box", "Trick or Treat"},
-    ["Spray"] = {"Lovely Spray", "Pine Spray"},
-    ["Trowel"] = {"Garden Shovel", "Plastic Shovel", "Snow Shovel", "Pumpkin Carver"},
-    ["Uzi"] = {"Electro Uzi", "Water Uzi", "Pine Uzi", "Demon Uzi"},
-    ["Flashbang"] = {"Camera", "Disco Ball", "Pixel Flashbang", "Skullbang", "Shining Star"},
-    ["Medkit"] = {"Briefcase", "Laptop", "Medkitty"},
-    ["War Horn"] = {"Trumpet", "Mammoth Horn"},
+-- Weapon list (these exist in the Weapons folder)
+local WEAPON_LIST = {
+    "None", "Assault Rifle", "Battle Axe", "Bow", "Burst Rifle", "Chainsaw",
+    "Crossbow", "Daggers", "Energy Rifle", "Energy Pistols", "Exogun", "Fists",
+    "Flamethrower", "Flare Gun", "Freeze Ray", "Grenade", "Grenade Launcher",
+    "Gunblade", "Handgun", "Katana", "Knife", "Minigun", "Molotov",
+    "Paintball Gun", "Revolver", "RPG", "Riot Shield", "Scythe", "Shorty",
+    "Shotgun", "Slingshot", "Smoke Grenade", "Sniper", "Subspace Tripmine",
+    "Spray", "Trowel", "Uzi", "Flashbang", "Medkit", "War Horn"
 }
 
+-- State
 local originalGuns = {}
 local appliedSkins = {}
 local selectedSkins = {}
 local skinCases = {}
 local weaponsFolder = nil
+local wrapConfig = {}
+local wrapWeapons = {}
+local wrapList = {}
 
 local SKINS_FILE = "RivalsModular/WeaponSkins.json"
+local WRAPS_FILE = "RivalsModular/WrapChanger.json"
 
+-- Shared state for dropdowns
 local currentWeapon = "None"
 local currentSkinList = {"Select a weapon first"}
 local currentSkin = nil
+local currentWrapWeapon = "none"
+local currentWrapList = {"none"}
+local currentWrap = "none"
 
 local function debugPrint(msg)
     print("[skins] " .. msg)
@@ -80,12 +59,52 @@ local function getSkinCases()
         return LocalPlayer.PlayerScripts.Assets.ViewModels
     end)
     if not ok or not viewModels then return skinCases end
-    local names = {"Spooky Skin Case", "Skin Case 2", "Skin Case 3", "Skin Case", "Other", "Festive Skin Case"}
-    for _, name in ipairs(names) do
-        local ok2, case = pcall(function() return viewModels:FindFirstChild(name) end)
-        if ok2 and case then table.insert(skinCases, case) end
+
+    -- Find all folders that might contain skins
+    for _, child in ipairs(viewModels:GetChildren()) do
+        if child:IsA("Folder") and child.Name ~= "Weapons" then
+            table.insert(skinCases, child)
+        end
     end
+
+    debugPrint("Found " .. #skinCases .. " skin cases")
     return skinCases
+end
+
+-- Find all skins for a specific weapon by looking through all cases
+local function findSkinsForWeapon(weaponName)
+    local skins = {}
+    local weapon = getWeaponsFolder() and getWeaponsFolder():FindFirstChild(weaponName)
+    if not weapon then return skins end
+
+    -- Get original children names to match against
+    local originalNames = {}
+    for _, child in ipairs(weapon:GetChildren()) do
+        table.insert(originalNames, child.Name)
+    end
+
+    -- Search all cases for skins that match this weapon
+    for _, case in ipairs(getSkinCases()) do
+        for _, skin in ipairs(case:GetChildren()) do
+            -- A skin matches if it has similar children to the weapon
+            local matchCount = 0
+            for _, skinChild in ipairs(skin:GetChildren()) do
+                for _, origName in ipairs(originalNames) do
+                    if skinChild.Name == origName then
+                        matchCount = matchCount + 1
+                        break
+                    end
+                end
+            end
+            -- If more than half the children match, it's a skin for this weapon
+            if matchCount > 0 and matchCount >= #originalNames / 2 then
+                table.insert(skins, skin.Name)
+            end
+        end
+    end
+
+    table.sort(skins)
+    return skins
 end
 
 local function saveOriginal(weaponName)
@@ -120,12 +139,19 @@ local function applySkin(weaponName, skinName)
     local folder = getWeaponsFolder()
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then return end
+    if not weapon then
+        debugPrint("ERROR: Weapon not found")
+        return
+    end
 
+    -- Find the skin in any case
     local skinModel = nil
     for _, case in ipairs(getSkinCases()) do
         local found = case:FindFirstChild(skinName)
-        if found then skinModel = found break end
+        if found then
+            skinModel = found
+            break
+        end
     end
     if not skinModel then
         debugPrint("ERROR: Skin not found")
@@ -148,7 +174,6 @@ local function refreshViewModel()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    -- Store currently equipped tool
     local equippedTool = nil
     for _, child in ipairs(character:GetChildren()) do
         if child:IsA("Tool") then
@@ -157,15 +182,12 @@ local function refreshViewModel()
         end
     end
 
-    -- Unequip all
     humanoid:UnequipTools()
     task.wait(0.1)
 
-    -- Re-equip if there was one
     if equippedTool then
         humanoid:EquipTool(equippedTool)
     else
-        -- Equip first tool in backpack
         local backpack = LocalPlayer:FindFirstChild("Backpack")
         if backpack then
             for _, tool in ipairs(backpack:GetChildren()) do
@@ -176,7 +198,6 @@ local function refreshViewModel()
             end
         end
     end
-    debugPrint("Viewmodel refreshed")
 end
 
 local function saveSettings()
@@ -192,9 +213,92 @@ local function loadSettings()
             if data and data.selectedSkins then
                 selectedSkins = data.selectedSkins
                 for weapon, skin in pairs(selectedSkins) do
-                    if WEAPON_SKINS[weapon] and table.find(WEAPON_SKINS[weapon], skin) then
-                        applySkin(weapon, skin)
+                    applySkin(weapon, skin)
+                end
+            end
+        end
+    end)
+end
+
+-- Wrap changer functions
+local function getWrapWeapons()
+    if #wrapWeapons > 0 then return wrapWeapons end
+    local folder = getWeaponsFolder()
+    if not folder then return wrapWeapons end
+    local skip = {["Unobtainable"] = true}
+    for _, child in ipairs(folder:GetChildren()) do
+        if not skip[child.Name] and child:IsA("Folder") then
+            table.insert(wrapWeapons, child.Name)
+        end
+    end
+    table.sort(wrapWeapons, function(a, b) return a:lower() < b:lower() end)
+    return wrapWeapons
+end
+
+local function getWrapList()
+    if #wrapList > 0 then return wrapList end
+    local ok, wraps = pcall(function() return LocalPlayer.PlayerScripts.Assets.WrapTextures:GetChildren() end)
+    if ok and wraps then
+        for _, wrap in ipairs(wraps) do
+            if wrap:IsA("Folder") or wrap:IsA("Model") then
+                table.insert(wrapList, wrap.Name)
+            end
+        end
+        table.sort(wrapList, function(a, b) return a:lower() < b:lower() end)
+    end
+    table.insert(wrapList, 1, "none")
+    return wrapList
+end
+
+local function applyWrap(weaponName, wrapName)
+    local folder = getWeaponsFolder()
+    if not folder then return end
+    local weapon = folder:FindFirstChild(weaponName)
+    if not weapon then return end
+
+    -- Remove existing textures
+    for _, desc in ipairs(weapon:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            for _, child in ipairs(desc:GetChildren()) do
+                if child:IsA("Texture") then child:Destroy() end
+            end
+        end
+    end
+
+    -- Apply new wrap
+    if wrapName ~= "none" then
+        local ok, wrapFolder = pcall(function()
+            return LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
+        end)
+        if ok and wrapFolder then
+            for _, tex in ipairs(wrapFolder:GetChildren()) do
+                if tex:IsA("Texture") then
+                    for _, desc in ipairs(weapon:GetDescendants()) do
+                        if desc:IsA("BasePart") then
+                            tex:Clone().Parent = desc
+                        end
                     end
+                end
+            end
+        end
+    end
+    wrapConfig[weaponName] = wrapName
+end
+
+local function saveWrapSettings()
+    pcall(function()
+        if writefile then writefile(WRAPS_FILE, HttpService:JSONEncode(wrapConfig)) end
+    end)
+end
+
+local function loadWrapSettings()
+    pcall(function()
+        if isfile and isfile(WRAPS_FILE) then
+            local data = HttpService:JSONDecode(readfile(WRAPS_FILE))
+            if data then
+                wrapConfig = data
+                for weapon, wrap in pairs(wrapConfig) do
+                    applyWrap(weapon, wrap)
                 end
             end
         end
@@ -216,48 +320,51 @@ function Skins.Init(deps)
         getWeaponsFolder()
         getSkinCases()
         loadSettings()
+        loadWrapSettings()
     end)
 
     local page = GUI.GetPage and GUI.GetPage("Skins")
     if page then
-        local weaponList = {"None"}
-        for weapon, _ in pairs(WEAPON_SKINS) do table.insert(weaponList, weapon) end
-        table.sort(weaponList)
-
         GUI.AddSection(page, "Skin Changer", 1)
 
+        -- Weapon dropdown
         GUI.AddDropdown(page, "Weapon",
-            function() return weaponList end,
+            function() return WEAPON_LIST end,
             function() return currentWeapon end,
             function(v)
                 currentWeapon = v
                 debugPrint("Weapon: " .. v)
-                if v ~= "None" and WEAPON_SKINS[v] then
-                    currentSkinList = WEAPON_SKINS[v]
-                    currentSkin = selectedSkins[v] or WEAPON_SKINS[v][1]
+                if v ~= "None" then
+                    -- Dynamically find skins for this weapon
+                    currentSkinList = findSkinsForWeapon(v)
+                    if #currentSkinList == 0 then
+                        currentSkinList = {"No skins found"}
+                    end
+                    currentSkin = selectedSkins[v] or currentSkinList[1]
                 else
                     currentSkinList = {"Select a weapon first"}
                     currentSkin = nil
                 end
             end, 2)
 
+        -- Skin dropdown
         GUI.AddDropdown(page, "Skin",
             function() return currentSkinList end,
             function() return currentSkin end,
             function(v)
                 currentSkin = v
                 debugPrint("Skin: " .. v)
-                if currentWeapon ~= "None" then
+                if currentWeapon ~= "None" and v ~= "No skins found" then
                     selectedSkins[currentWeapon] = v
                     applySkin(currentWeapon, v)
                     saveSettings()
-                    -- Refresh viewmodel to show new skin
                     task.spawn(function()
                         refreshViewModel()
                     end)
                 end
             end, 3)
 
+        -- Reset button
         GUI.AddButton(page, "Reset Skins",
             function()
                 for weaponName, _ in pairs(appliedSkins) do restoreOriginal(weaponName) end
@@ -268,6 +375,45 @@ function Skins.Init(deps)
                     refreshViewModel()
                 end)
             end, 4, true)
+
+        -- Wrap changer section
+        GUI.AddSection(page, "Wrap Changer", 5)
+
+        -- Wrap weapon dropdown
+        GUI.AddDropdown(page, "Weapon",
+            function()
+                local list = {"none"}
+                for _, w in ipairs(getWrapWeapons()) do table.insert(list, w) end
+                return list
+            end,
+            function() return currentWrapWeapon end,
+            function(v)
+                currentWrapWeapon = v
+                debugPrint("Wrap weapon: " .. v)
+            end, 6)
+
+        -- Wrap selection dropdown
+        GUI.AddDropdown(page, "Wrap",
+            function() return getWrapList() end,
+            function() return currentWrap end,
+            function(v)
+                currentWrap = v
+                debugPrint("Wrap: " .. v)
+                if currentWrapWeapon ~= "none" then
+                    applyWrap(currentWrapWeapon, v)
+                    saveWrapSettings()
+                end
+            end, 7)
+
+        -- Clear wraps button
+        GUI.AddButton(page, "Clear All Wraps",
+            function()
+                for weaponName, _ in pairs(wrapConfig) do
+                    applyWrap(weaponName, "none")
+                end
+                wrapConfig = {}
+                saveWrapSettings()
+            end, 8, true)
     end
 
     print("[rivals] Skins module initialized.")
