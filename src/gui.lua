@@ -373,6 +373,9 @@ end
 -- TAB SYSTEM WITH ICONS
 -- ============================================================
 
+-- Early no-op definition (will be overridden after previews created)
+GUI.UpdatePreviewVisibility = function() end
+
 local function switchTab(name)
     if ActiveTab == name then return end
     ActiveTab = name
@@ -382,9 +385,7 @@ local function switchTab(name)
     end
 
     -- Update preview visibility
-    if GUI.UpdatePreviewVisibility then
-        GUI.UpdatePreviewVisibility()
-    end
+    GUI.UpdatePreviewVisibility()
 
     -- Update tab styles
     for _, child in ipairs(TabBar:GetChildren()) do
