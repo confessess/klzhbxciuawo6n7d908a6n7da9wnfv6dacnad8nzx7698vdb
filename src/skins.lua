@@ -1,12 +1,12 @@
 -- ============================================================
--- Rivals Modular -- Skins (Real-time refresh)
--- Forces viewmodel reload without rejoining
+-- Rivals Modular -- Skins (Auto-apply + Preview + Disclaimer)
+-- Skins apply on selection, change visible after death
 -- ============================================================
 
 local Skins = {}
 
 local Config, Utils, GUI, Core
-local Players, LocalPlayer, HttpService
+local Players, LocalPlayer, HttpService, RunService
 
 local weaponsFolder = nil
 local skinCases = {}
@@ -18,6 +18,12 @@ local selectedSkin = "None"
 local skinOptions = {"Select a weapon first"}
 
 local SKINS_FILE = "RivalsModular/skins.json"
+
+local previewFrame = nil
+local previewViewport = nil
+local previewCamera = nil
+local previewModel = nil
+local previewRotation = 0
 
 local function debugPrint(msg)
     print("[skins] " .. msg)
@@ -141,58 +147,136 @@ local function resetWeapon(weaponName)
     end
 end
 
--- FORCE VIEWMODEL RELOAD
-local function forceViewModelReload()
-    debugPrint("Forcing viewmodel reload...")
-
-    local char = LocalPlayer.Character
-    if not char then return end
-
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    -- Method 1: Find and rebuild ClientViewModel
-    local ok, vm = pcall(function()
-        return LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel
-    end)
-
-    if ok and vm then
-        debugPrint("Found ClientViewModel, rebuilding...")
-
-        -- Clear the viewmodel children to force rebuild
-        for _, child in ipairs(vm:GetChildren()) do
-            if child.Name:find("Assault Rifle") or child.Name:find("AK%-47") or 
-               child.Name:find("Boneclaw") or child.Name:find("Augmented") then
-                child:Destroy()
-                debugPrint("Destroyed old viewmodel: " .. child.Name)
-            end
-        end
-    end
-
-    -- Method 2: Re-equip current weapon
-    local equipped = nil
-    for _, child in ipairs(char:GetChildren()) do
-        if child:IsA("Tool") then
-            equipped = child
-            break
-        end
-    end
-
-    if equipped then
-        debugPrint("Re-equipping: " .. equipped.Name)
-        humanoid:UnequipTools()
-        task.wait(0.2)
-        humanoid:EquipTool(equipped)
-    end
-
-    debugPrint("Reload complete")
-end
-
 local function saveSkins()
     pcall(function()
         if writefile then
             writefile(SKINS_FILE, HttpService:JSONEncode(currentSkins))
         end
+    end)
+end
+
+local function createPreview(parent)
+    previewFrame = Instance.new("Frame")
+    previewFrame.Name = "SkinPreview"
+    previewFrame.Size = UDim2.new(0, 200, 0, 240)
+    previewFrame.Position = UDim2.new(1, -210, 0, 50)
+    previewFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    previewFrame.BorderSizePixel = 0
+    previewFrame.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = previewFrame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(124, 108, 255)
+    stroke.Thickness = 2
+    stroke.Transparency = 0.5
+    stroke.Parent = previewFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 28)
+    title.BackgroundTransparency = 1
+    title.Text = "PREVIEW"
+    title.TextColor3 = Color3.fromRGB(124, 108, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 12
+    title.Parent = previewFrame
+
+    previewViewport = Instance.new("ViewportFrame")
+    previewViewport.Size = UDim2.new(1, -10, 1, -70)
+    previewViewport.Position = UDim2.new(0, 5, 0, 32)
+    previewViewport.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    previewViewport.BackgroundTransparency = 0
+    previewViewport.BorderSizePixel = 0
+    previewViewport.Parent = previewFrame
+
+    local vpCorner = Instance.new("UICorner")
+    vpCorner.CornerRadius = UDim.new(0, 8)
+    vpCorner.Parent = previewViewport
+
+    previewCamera = Instance.new("Camera")
+    previewCamera.Parent = previewViewport
+    previewViewport.CurrentCamera = previewCamera
+
+    local light = Instance.new("PointLight")
+    light.Brightness = 2
+    light.Range = 20
+    light.Parent = previewViewport
+
+    -- Disclaimer
+    local disclaimer = Instance.new("TextLabel")
+    disclaimer.Size = UDim2.new(1, -10, 0, 32)
+    disclaimer.Position = UDim2.new(0, 5, 1, -36)
+    disclaimer.BackgroundTransparency = 1
+    disclaimer.Text = "Skins only change upon death"
+    disclaimer.TextColor3 = Color3.fromRGB(255, 180, 80)
+    disclaimer.Font = Enum.Font.GothamMedium
+    disclaimer.TextSize = 11
+    disclaimer.TextWrapped = true
+    disclaimer.Parent = previewFrame
+
+    return previewFrame
+end
+
+local function updatePreview(weaponName, skinName)
+    if not previewViewport then return end
+    if previewModel then
+        previewModel:Destroy()
+        previewModel = nil
+    end
+    if weaponName == "None" then return end
+
+    local folder = getWeaponsFolder()
+    if not folder then return end
+
+    local source = nil
+    if skinName and skinName ~= "None" then
+        for _, case in ipairs(getAllSkinCases()) do
+            local found = case:FindFirstChild(skinName)
+            if found then
+                source = found
+                break
+            end
+        end
+    end
+
+    if not source then
+        source = folder:FindFirstChild(weaponName)
+    end
+    if not source then return end
+
+    previewModel = source:Clone()
+    previewModel.Parent = previewViewport
+
+    local cf, size = previewModel:GetBoundingBox()
+    local center = cf.Position
+    local maxDim = math.max(size.X, size.Y, size.Z)
+    local distance = maxDim * 1.5
+
+    previewCamera.CFrame = CFrame.new(
+        center + Vector3.new(distance, distance * 0.5, distance),
+        center
+    )
+
+    previewRotation = 0
+end
+
+local function startPreviewRotation()
+    RunService.RenderStepped:Connect(function(dt)
+        if not previewModel or not previewCamera then return end
+        previewRotation = previewRotation + dt * 0.5
+        local cf, size = previewModel:GetBoundingBox()
+        local center = cf.Position
+        local maxDim = math.max(size.X, size.Y, size.Z)
+        local distance = maxDim * 1.5
+        local angle = previewRotation
+        local x = math.cos(angle) * distance
+        local z = math.sin(angle) * distance
+        previewCamera.CFrame = CFrame.new(
+            center + Vector3.new(x, distance * 0.3, z),
+            center
+        )
     end)
 end
 
@@ -206,6 +290,7 @@ function Skins.Init(deps)
     Players = Utils.Players
     LocalPlayer = Utils.LocalPlayer
     HttpService = game:GetService("HttpService")
+    RunService = Utils.RunService
 
     local weaponList = {"None"}
     local folder = getWeaponsFolder()
@@ -225,6 +310,9 @@ function Skins.Init(deps)
 
     local page = GUI.GetPage and GUI.GetPage("Skins")
     if page then
+        createPreview(page)
+        startPreviewRotation()
+
         GUI.AddSection(page, "Skin Changer", 1)
 
         GUI.AddDropdown(page, "Weapon",
@@ -238,9 +326,11 @@ function Skins.Init(deps)
                         skinOptions = {"No skins found"}
                     end
                     selectedSkin = "None"
+                    updatePreview(v, nil)
                 else
                     skinOptions = {"Select a weapon first"}
                     selectedSkin = "None"
+                    updatePreview("None", nil)
                 end
             end, 2)
 
@@ -250,36 +340,23 @@ function Skins.Init(deps)
             function(v)
                 selectedSkin = v
                 if selectedWeapon ~= "None" and v ~= "None" and v ~= "No skins found" then
+                    updatePreview(selectedWeapon, v)
+                    -- Auto-apply
                     local success = applySkin(selectedWeapon, v)
                     if success then
                         saveSkins()
-                        -- Auto refresh after applying
-                        task.spawn(function()
-                            task.wait(0.1)
-                            forceViewModelReload()
-                        end)
                     end
                 end
             end, 3)
-
-        -- Manual refresh button
-        GUI.AddButton(page, "Refresh Viewmodel",
-            function()
-                task.spawn(function()
-                    forceViewModelReload()
-                end)
-            end, 4, false)
 
         GUI.AddButton(page, "Reset Weapon",
             function()
                 if selectedWeapon ~= "None" then
                     resetWeapon(selectedWeapon)
                     saveSkins()
-                    task.spawn(function()
-                        forceViewModelReload()
-                    end)
+                    updatePreview(selectedWeapon, nil)
                 end
-            end, 5, true)
+            end, 4, true)
 
         GUI.AddButton(page, "Reset All",
             function()
@@ -287,10 +364,7 @@ function Skins.Init(deps)
                     resetWeapon(weapon)
                 end
                 saveSkins()
-                task.spawn(function()
-                    forceViewModelReload()
-                end)
-            end, 6, true)
+            end, 5, true)
     end
 
     print("[rivals] Skins module initialized.")
@@ -299,6 +373,9 @@ end
 function Skins.Cleanup()
     for weapon, _ in pairs(currentSkins) do
         resetWeapon(weapon)
+    end
+    if previewFrame then
+        previewFrame:Destroy()
     end
 end
 
