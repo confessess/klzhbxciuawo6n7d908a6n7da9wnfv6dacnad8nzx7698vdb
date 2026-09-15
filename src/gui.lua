@@ -677,16 +677,19 @@ function GUI.ToggleMenu()
 
     local ok, err = pcall(function()
         IsOpen = not IsOpen
-        GUI.UpdatePreviewVisibility()
+
+        -- Update preview visibility safely
+        if GUI.UpdatePreviewVisibility then
+            GUI.UpdatePreviewVisibility()
+        end
+
         if IsOpen then
+            -- Simple show, no animation
             MainFrame.Visible = true
-            MainFrame.Size = UDim2.fromOffset(780, 0)
-            tween(MainFrame, {Size = UDim2.fromOffset(780, 520)})
+            MainFrame.Size = UDim2.fromOffset(780, 520)
         else
-            tween(MainFrame, {Size = UDim2.fromOffset(780, 0)})
-            task.delay(0.2, function()
-                MainFrame.Visible = false
-            end)
+            -- Simple hide, no animation
+            MainFrame.Visible = false
         end
     end)
 
