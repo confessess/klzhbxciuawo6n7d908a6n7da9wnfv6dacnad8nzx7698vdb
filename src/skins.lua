@@ -417,7 +417,7 @@ function Skins.Init(deps)
             end
         end, 3)
 
-        GUI.Components.Dropdown(page, "Skin", skinOptions, selectedSkin, function(v)
+        GUI.Components.Dropdown(page, "Skin", function() return skinOptions end, selectedSkin, function(v)
             selectedSkin = v
             if selectedWeapon ~= "None" and v ~= "None" then
                 updatePreview(selectedWeapon, v)
