@@ -128,7 +128,6 @@ function Components.Dropdown(page, label, options, default, callback, order)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 32)
     frame.BackgroundTransparency = 1
-    frame.AutomaticSize = Enum.AutomaticSize.Y
     frame.LayoutOrder = order or 0
     frame.ClipsDescendants = false
     frame.Parent = page
@@ -437,6 +436,7 @@ local function createTab(name, iconId, order)
     page.Visible = false
     page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     page.CanvasSize = UDim2.fromScale(0, 0)
+    page.ClipsDescendants = true
     page.Parent = ContentHost
 
     local list = Instance.new("UIListLayout")
