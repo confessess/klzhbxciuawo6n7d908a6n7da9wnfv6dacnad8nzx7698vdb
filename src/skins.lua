@@ -406,7 +406,22 @@ local function applyWrap(weaponName, wrapName)
             return false 
         end
 
-        -- Remove existing textures
+        -- STEP 1: Find invisible parts (ZYPHERION method)
+        local invisParts = {}
+        for _, desc in ipairs(weapon:GetDescendants()) do
+            if desc:IsA("BasePart") and desc.Transparency == 1 then
+                table.insert(invisParts, desc)
+            end
+        end
+
+        local function isInvisible(part)
+            for _, inv in ipairs(invisParts) do
+                if part == inv then return true end
+            end
+            return false
+        end
+
+        -- STEP 2: Remove existing textures from ALL BaseParts
         for _, desc in ipairs(weapon:GetDescendants()) do
             if desc:IsA("BasePart") then
                 for _, child in ipairs(desc:GetChildren()) do
@@ -417,23 +432,24 @@ local function applyWrap(weaponName, wrapName)
             end
         end
 
-        -- Apply new wrap
+        -- STEP 3: Apply new wrap to ALL BaseParts (skip invisible)
         if wrapName ~= "None" then
             local wrapFolder = LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
             if wrapFolder then
                 debugPrint("Found wrap folder: " .. wrapFolder.Name)
+                local applied = 0
                 for _, tex in ipairs(wrapFolder:GetChildren()) do
                     if tex:IsA("Texture") then
-                        -- Apply to all MeshParts in weapon
                         for _, desc in ipairs(weapon:GetDescendants()) do
-                            if desc:IsA("MeshPart") then
+                            if desc:IsA("BasePart") and not isInvisible(desc) then
                                 local clone = tex:Clone()
                                 clone.Parent = desc
+                                applied = applied + 1
                             end
                         end
                     end
                 end
-                debugPrint("Wrap applied!")
+                debugPrint("Wrap applied to " .. applied .. " parts!")
             else
                 debugPrint("ERROR: Wrap not found: " .. wrapName)
             end
