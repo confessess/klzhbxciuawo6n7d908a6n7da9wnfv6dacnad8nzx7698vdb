@@ -1,6 +1,5 @@
 -- ============================================================
--- Rivals Modular -- Skins (Proper mapping + Wrap Changer)
--- Based on actual game data
+-- Rivals Modular -- Skins (No auto-apply, exact matching)
 -- ============================================================
 
 local Skins = {}
@@ -8,54 +7,16 @@ local Skins = {}
 local Config, Utils, GUI, Core
 local Players, LocalPlayer, HttpService
 
--- Correct skin-to-weapon mapping based on actual game files
-local WEAPON_SKINS = {
-    ["Assault Rifle"] = {"AK-47", "Boneclaw Rifle", "Augmented Rifle", "Gingerbread Augmented Rifle", "Soul Rifle"},
-    ["Battle Axe"] = {"The Shred", "Nordic Axe", "Ban Axe", "Cerulean Axe", "Mimic Axe"},
-    ["Bow"] = {"Bat Bow", "Compound Bow", "Raven Bow", "Dream Bow", "Frostbite Bow"},
-    ["Burst Rifle"] = {"Aqua Burst", "Electro Rifle", "Pixel Burst", "Pine Burst", "Spectral Burst", "Bullpup Burst"},
-    ["Chainsaw"] = {"Blobsaw", "Buzzsaw", "Festive Buzzsaw", "Gunsaw"},
-    ["Crossbow"] = {"Frostbite Crossbow", "Pixel Crossbow", "Harpoon Crossbow", "Violin Crossbow"},
-    ["Daggers"] = {"Aces", "Cookies", "Bat Daggers", "Balisong", "Shurikens", "Handsaws"},
-    ["Energy Rifle"] = {"2025 Energy Rifle", "Apex Rifle", "Hacker Rifle", "Hydro Rifle", "Void Rifle", "New Year Energy Rifle"},
-    ["Energy Pistols"] = {"2025 Energy Pistols", "Apex Pistols", "Hacker Pistols", "Void Pistols", "Hydro Pistols", "New Year Energy Pistols", "Soul Pistols"},
-    ["Exogun"] = {"Ray Gun", "Singularity", "Wondergun", "Midnight Festive Exogun", "Exogourd"},
-    ["Fists"] = {"Boxing Gloves", "Brass Knuckles", "Pumpkin Claws", "Festive Fists", "Fists of Hurt"},
-    ["Flamethrower"] = {"Lamethrower", "Pixel Flamethrower", "Snowblower", "Jack O'Thrower", "Glitterthrower"},
-    ["Flare Gun"] = {"Dynamite Gun", "Firework Gun", "Wrapped Flare Gun", "Vexed Flare Gun", "Banana Flare"},
-    ["Freeze Ray"] = {"Bubble Ray", "Temporal Ray", "Spider Ray", "Wrapped Freeze Ray", "Gum Ray"},
-    ["Grenade"] = {"Water Balloon", "Whoopee Cushion", "Soul Grenade", "Jingle Grenade", "Dynamite", "Gearnade"},
-    ["Grenade Launcher"] = {"Swashbuckler", "Uranium Launcher", "Skull Launcher", "Snowball Launcher", "Squid Launcher", "Cupcake Launcher"},
-    ["Gunblade"] = {"Hyper Gunblade", "Elf's Gunblade", "Crude Gunblade"},
-    ["Handgun"] = {"Blaster", "Pixel Handgun", "Pumpkin Handgun", "Gingerbread Handgun", "Gumball Handgun", "Desert Eagle", "Towerstone Handgun", "Sheriff", "Peppermint Sheriff"},
-    ["Katana"] = {"Lightning Bolt", "Saber", "Pixel Katana", "Devil's Trident", "2025 Katana", "Keytana", "Stellar Katana", "New Year Katana", "Boneblade"},
-    ["Knife"] = {"Chancla", "Karambit", "Machete", "Candy Cane", "Fork"},
-    ["Minigun"] = {"Lasergun 3000", "Pixel Minigun", "Wrapped Minigun", "Pumpkin Minigun", "Drum Gun"},
-    ["Molotov"] = {"Coffee", "Torch", "Hexxed Candle", "Hot Coals", "Vexed Candle", "Birthday Candle"},
-    ["Paintball Gun"] = {"Boba Gun", "Slime Gun", "Snowball Gun", "Brain Gun", "Ketchup Gun", "Peppergun", "Paintbrush"},
-    ["Revolver"] = {"Boneclaw Revolver"},
-    ["RPG"] = {"Nuke Launcher"},
-    ["Riot Shield"] = {"Door", "Sled", "Tombstone Shield", "Energy Shield"},
-    ["Scythe"] = {"Anchor", "Keythe", "Scythe of Death", "Bat Scythe", "Cryo Scythe", "Sakura Scythe", "Palm Scythe"},
-    ["Shorty"] = {"Lovely Shorty", "Not So Shorty", "Too Shorty", "Demon Shorty", "Wrapped Shorty", "Balloon Shorty"},
-    ["Shotgun"] = {"Balloon Shotgun", "Hyper Shotgun", "Wrapped Shotgun", "Broomstick", "Cactus Shotgun"},
-    ["Slingshot"] = {"Goalpost", "Stick", "Reindeer Slingshot", "Boneshot"},
-    ["Smoke Grenade"] = {"Balance", "Emoji Cloud", "Eyeball", "Snowglobe"},
-    ["Sniper"] = {"Hyper Sniper", "Pixel Sniper", "Keyper", "Gingerbread Sniper", "Eyething Sniper"},
-    ["Subspace Tripmine"] = {"Don't Press", "Spring", "Dev-in-the-Box", "Trick or Treat", "DIY Tripmine"},
-    ["Spray"] = {"Lovely Spray", "Pine Spray", "Boneclaw Spray", "Spray Bottle"},
-    ["Trowel"] = {"Garden Shovel", "Plastic Shovel", "Snow Shovel", "Pumpkin Carver"},
-    ["Uzi"] = {"Electro Uzi", "Water Uzi", "Pine Uzi", "Demon Uzi"},
-    ["Flashbang"] = {"Camera", "Disco Ball", "Pixel Flashbang", "Skullbang", "Shining Star"},
-    ["Medkit"] = {"Briefcase", "Laptop", "Medkitty"},
-    ["War Horn"] = {"Trumpet", "Mammoth Horn", "Megaphone", "Air Horn", "Boneclaw Horn"},
+local WEAPON_LIST = {
+    "None", "Assault Rifle", "Battle Axe", "Bow", "Burst Rifle", "Chainsaw",
+    "Crossbow", "Daggers", "Energy Rifle", "Energy Pistols", "Exogun", "Fists",
+    "Flamethrower", "Flare Gun", "Freeze Ray", "Grenade", "Grenade Launcher",
+    "Gunblade", "Handgun", "Katana", "Knife", "Minigun", "Molotov",
+    "Paintball Gun", "Revolver", "RPG", "Riot Shield", "Scythe", "Shorty",
+    "Shotgun", "Slingshot", "Smoke Grenade", "Sniper", "Subspace Tripmine",
+    "Spray", "Trowel", "Uzi", "Flashbang", "Medkit", "War Horn"
 }
 
-local WEAPON_LIST = {"None"}
-for weapon, _ in pairs(WEAPON_SKINS) do table.insert(WEAPON_LIST, weapon) end
-table.sort(WEAPON_LIST)
-
--- State
 local originalGuns = {}
 local appliedSkins = {}
 local selectedSkins = {}
@@ -68,7 +29,6 @@ local wrapList = {}
 local SKINS_FILE = "RivalsModular/WeaponSkins.json"
 local WRAPS_FILE = "RivalsModular/WrapChanger.json"
 
--- Shared state for dropdowns
 local currentWeapon = "None"
 local currentSkinList = {"Select a weapon first"}
 local currentSkin = nil
@@ -102,6 +62,55 @@ local function getSkinCases()
         end
     end
     return skinCases
+end
+
+-- Find skins that EXACTLY match the weapon's children
+local function findSkinsForWeapon(weaponName)
+    local skins = {}
+    local folder = getWeaponsFolder()
+    if not folder then return skins end
+
+    local weapon = folder:FindFirstChild(weaponName)
+    if not weapon then return skins end
+
+    -- Get original children names and count
+    local originalNames = {}
+    local originalCount = 0
+    for _, child in ipairs(weapon:GetChildren()) do
+        table.insert(originalNames, child.Name)
+        originalCount = originalCount + 1
+    end
+
+    if originalCount == 0 then return skins end
+
+    -- Search all cases for exact matches
+    for _, case in ipairs(getSkinCases()) do
+        for _, skin in ipairs(case:GetChildren()) do
+            local skinChildren = skin:GetChildren()
+            local skinCount = #skinChildren
+
+            -- Must have same number of children
+            if skinCount == originalCount then
+                local matchCount = 0
+                for _, skinChild in ipairs(skinChildren) do
+                    for _, origName in ipairs(originalNames) do
+                        if skinChild.Name == origName then
+                            matchCount = matchCount + 1
+                            break
+                        end
+                    end
+                end
+
+                -- All children must match
+                if matchCount == originalCount then
+                    table.insert(skins, skin.Name)
+                end
+            end
+        end
+    end
+
+    table.sort(skins)
+    return skins
 end
 
 local function saveOriginal(weaponName)
@@ -150,7 +159,7 @@ local function applySkin(weaponName, skinName)
         end
     end
     if not skinModel then
-        debugPrint("ERROR: Skin not found: " .. skinName)
+        debugPrint("ERROR: Skin not found")
         return
     end
 
@@ -201,21 +210,7 @@ local function saveSettings()
     end)
 end
 
-local function loadSettings()
-    pcall(function()
-        if isfile and isfile(SKINS_FILE) then
-            local data = HttpService:JSONDecode(readfile(SKINS_FILE))
-            if data and data.selectedSkins then
-                selectedSkins = data.selectedSkins
-                for weapon, skin in pairs(selectedSkins) do
-                    applySkin(weapon, skin)
-                end
-            end
-        end
-    end)
-end
-
--- Wrap changer
+-- Wrap changer functions
 local function getWrapWeapons()
     if #wrapWeapons > 0 then return wrapWeapons end
     local folder = getWeaponsFolder()
@@ -312,7 +307,7 @@ function Skins.Init(deps)
     task.delay(0.5, function()
         getWeaponsFolder()
         getSkinCases()
-        loadSettings()
+        -- DO NOT auto-load saved skins on start
         loadWrapSettings()
     end)
 
@@ -327,9 +322,14 @@ function Skins.Init(deps)
             function(v)
                 currentWeapon = v
                 debugPrint("Weapon: " .. v)
-                if v ~= "None" and WEAPON_SKINS[v] then
-                    currentSkinList = WEAPON_SKINS[v]
-                    currentSkin = selectedSkins[v] or currentSkinList[1]
+                if v ~= "None" then
+                    currentSkinList = findSkinsForWeapon(v)
+                    if #currentSkinList == 0 then
+                        currentSkinList = {"No skins found"}
+                        currentSkin = nil
+                    else
+                        currentSkin = nil  -- Don't auto-select
+                    end
                 else
                     currentSkinList = {"Select a weapon first"}
                     currentSkin = nil
@@ -343,7 +343,7 @@ function Skins.Init(deps)
             function(v)
                 currentSkin = v
                 debugPrint("Skin: " .. v)
-                if currentWeapon ~= "None" then
+                if currentWeapon ~= "None" and v ~= "No skins found" then
                     selectedSkins[currentWeapon] = v
                     applySkin(currentWeapon, v)
                     saveSettings()
