@@ -141,33 +141,8 @@ local function playHitSound()
 end
 
 local function setupHitSounds()
-    -- Hook into the viewmodel to detect hits
-    local function onDescendantAdded(desc)
-        if desc:IsA("Sound") and not desc:GetAttribute("Processed") then
-            desc:SetAttribute("Processed", true)
-            -- Check if it's a hit sound (has short duration)
-            task.delay(0.1, function()
-                if desc.Parent then
-                    playHitSound()
-                    desc:Stop()
-                end
-            end)
-        end
-    end
-
-    local function hookViewModel()
-        local ok, vm = pcall(function()
-            return LocalPlayer.PlayerScripts.Modules.ClientReplicatedClasses.ClientFighter.ClientItem.ClientViewModel
-        end)
-        if ok and vm then
-            vm.DescendantAdded:Connect(onDescendantAdded)
-        end
-    end
-
-    task.delay(2, hookViewModel)
-    LocalPlayer.CharacterAdded:Connect(function()
-        task.delay(2, hookViewModel)
-    end)
+    -- DISABLED - causes crashes from constant sound creation
+    -- TODO: Find better way to detect hits
 end
 
 -- ------------------------------------------------------------
@@ -182,10 +157,14 @@ local function updateDeviceSpoofer()
         spooferConn = nil
     end
 
-    spooferConn = RunService.RenderStepped:Connect(function()
-        pcall(function()
-            ReplicatedStorage.Remotes.Replication.Fighter.SetControls:FireServer(device)
-        end)
+    -- Throttle to once per second instead of every frame
+    task.spawn(function()
+        while true do
+            task.wait(1)
+            pcall(function()
+                ReplicatedStorage.Remotes.Replication.Fighter.SetControls:FireServer(device)
+            end)
+        end
     end)
 end
 
@@ -240,72 +219,12 @@ end
 -- Custom Crosshair
 -- ------------------------------------------------------------
 
+-- Crosshair disabled - Drawing API causes crashes
+local crosshairGui = nil
+
 local function updateCrosshair(dt)
-    local enabled = Config.Get("Crosshair_Enabled") == true
-    if not enabled or Core.MenuOpen then
-        for _, line in ipairs(crosshairLines) do
-            line.Visible = false
-        end
-        return
-    end
-
-    -- Initialize lines
-    if #crosshairLines == 0 then
-        for i = 1, 2 do
-            local line = Utils.NewLine(3, Color3.fromRGB(255, 0, 0), 0)
-            if line then
-                table.insert(crosshairLines, line)
-            end
-        end
-    end
-
-    -- Update rotation
-    if Config.Get("Crosshair_Rotation") then
-        local speed = Config.Get("Crosshair_RotSpeed") or 3
-        crosshairRotation = (crosshairRotation + speed * dt * 60) % 360
-    end
-
-    -- Get color
-    local color
-    if Config.Get("Crosshair_Rainbow") then
-        color = Color3.fromHSV(tick() % 5 / 5, 1, 1)
-    else
-        color = Utils.HexToColor(Config.Get("Crosshair_Color"))
-    end
-
-    local vp = Camera.ViewportSize
-    local center = Vector2.new(vp.X / 2, vp.Y / 2)
-    local length = Config.Get("Crosshair_Length") or 10
-    local thickness = Config.Get("Crosshair_Thickness") or 3
-
-    -- Calculate rotated positions
-    local angle = math.rad(crosshairRotation)
-    local cosA = math.cos(angle)
-    local sinA = math.sin(angle)
-
-    -- Horizontal line
-    local hLine = crosshairLines[1]
-    if hLine then
-        local offset = Vector2.new(length, 0)
-        local rotated = Vector2.new(offset.X * cosA - offset.Y * sinA, offset.X * sinA + offset.Y * cosA)
-        hLine.From = center - rotated
-        hLine.To = center + rotated
-        hLine.Color = color
-        hLine.Thickness = thickness
-        hLine.Visible = true
-    end
-
-    -- Vertical line
-    local vLine = crosshairLines[2]
-    if vLine then
-        local offset = Vector2.new(0, length)
-        local rotated = Vector2.new(offset.X * cosA - offset.Y * sinA, offset.X * sinA + offset.Y * cosA)
-        vLine.From = center - rotated
-        vLine.To = center + rotated
-        vLine.Color = color
-        vLine.Thickness = thickness
-        vLine.Visible = true
-    end
+    -- Disabled for stability
+    return
 end
 
 -- ------------------------------------------------------------

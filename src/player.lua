@@ -18,6 +18,17 @@ local noclipConn = nil
 -- Fly
 -- ------------------------------------------------------------
 
+local function stopFly()
+    if flyConn then
+        flyConn:Disconnect()
+        flyConn = nil
+    end
+    if flyBodyVelocity then
+        flyBodyVelocity:Destroy()
+        flyBodyVelocity = nil
+    end
+end
+
 local function startFly()
     local character = LocalPlayer.Character
     if not character then return end
@@ -62,17 +73,6 @@ local function startFly()
             flyBodyVelocity.Velocity = dir * speed
         end
     end)
-end
-
-function stopFly()
-    if flyConn then
-        flyConn:Disconnect()
-        flyConn = nil
-    end
-    if flyBodyVelocity then
-        flyBodyVelocity:Destroy()
-        flyBodyVelocity = nil
-    end
 end
 
 -- ------------------------------------------------------------

@@ -295,70 +295,27 @@ end
 -- Drawing helpers
 -- ------------------------------------------------------------
 
+-- Drawing API DISABLED - causes crashes
+-- Return nil for all Drawing functions
+
 function Utils.NewLine(thickness, color, transparency)
-    local ok, line = pcall(function()
-        local d = Drawing.new("Line")
-        d.Thickness    = thickness or 1.5
-        d.Color        = color or Color3.fromRGB(255, 255, 255)
-        d.Transparency = transparency or 0
-        d.Visible      = false
-        return d
-    end)
-    if ok then return line end
     return nil
 end
 
 function Utils.NewCircle(radius, color, thickness)
-    local ok, circle = pcall(function()
-        local d = Drawing.new("Circle")
-        d.Radius    = radius or 100
-        d.Color     = color or Color3.fromRGB(255, 0, 0)
-        d.Thickness = thickness or 2
-        d.Filled    = false
-        d.Visible   = false
-        return d
-    end)
-    if ok then return circle end
     return nil
 end
 
 function Utils.NewSquare(size, color, transparency)
-    local ok, square = pcall(function()
-        local d = Drawing.new("Square")
-        d.Size        = size or Vector2.new(50, 50)
-        d.Color       = color or Color3.fromRGB(255, 255, 255)
-        d.Thickness   = 1
-        d.Transparency = transparency or 0
-        d.Filled      = false
-        d.Visible     = false
-        return d
-    end)
-    if ok then return square end
     return nil
 end
 
 function Utils.NewText(size, color)
-    local ok, text = pcall(function()
-        local d = Drawing.new("Text")
-        d.Size     = size or 14
-        d.Color    = color or Color3.fromRGB(255, 255, 255)
-        d.Outline  = true
-        d.OutlineColor = Color3.fromRGB(0, 0, 0)
-        d.Center   = true
-        d.Visible  = false
-        return d
-    end)
-    if ok then return text end
     return nil
 end
 
 function Utils.DestroyDrawing(obj)
-    pcall(function()
-        if obj then
-            obj.Visible = false
-            obj:Remove()
-        end
-    end)
+    -- No-op
 end
 
 -- ------------------------------------------------------------

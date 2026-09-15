@@ -71,21 +71,28 @@ local function getAimbotTarget()
     local bestDist = math.huge
 
     for _, player in ipairs(Utils.GetEnemies()) do
-        if teamCheck and Utils.IsTeammate(player) then continue end
-        if not isValidTarget(player) then continue end
+        local skip = false
+        if teamCheck and Utils.IsTeammate(player) then skip = true end
+        if not skip and not isValidTarget(player) then skip = true end
 
-        local part = player.Character:FindFirstChild(aimPart)
-        if not part then continue end
+        if not skip then
+            local part = player.Character:FindFirstChild(aimPart)
+            if not part then skip = true end
 
-        if wallCheck and not Utils.HasLineOfSight(part) then continue end
+            if not skip and wallCheck and not Utils.HasLineOfSight(part) then skip = true end
 
-        local screenPos, onScreen = Utils.WorldToScreen(part.Position)
-        if not screenPos or not onScreen then continue end
+            if not skip then
+                local screenPos, onScreen = Utils.WorldToScreen(part.Position)
+                if not screenPos or not onScreen then skip = true end
 
-        local dist2d = (screenPos - crosshair).Magnitude
-        if dist2d <= fovSize and dist2d < bestDist then
-            best = player
-            bestDist = dist2d
+                if not skip then
+                    local dist2d = (screenPos - crosshair).Magnitude
+                    if dist2d <= fovSize and dist2d < bestDist then
+                        best = player
+                        bestDist = dist2d
+                    end
+                end
+            end
         end
     end
 
