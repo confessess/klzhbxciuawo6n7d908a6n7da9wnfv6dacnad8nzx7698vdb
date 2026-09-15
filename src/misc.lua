@@ -8,6 +8,7 @@ local Misc = {}
 
 local Config, Utils, GUI, Core
 local Players, LocalPlayer, RunService, UserInputService, Camera, ReplicatedStorage
+local spooferLoop = false
 
 -- Hit sounds
 local HIT_SOUNDS = {
@@ -157,9 +158,15 @@ local function updateDeviceSpoofer()
         spooferConn = nil
     end
 
-    -- Throttle to once per second instead of every frame
+    -- Throttle to once per second, but allow stopping
+    if spooferLoop then
+        spooferLoop = false
+        task.wait(1.1)
+    end
+    spooferLoop = true
+
     task.spawn(function()
-        while true do
+        while spooferLoop do
             task.wait(1)
             pcall(function()
                 ReplicatedStorage.Remotes.Replication.Fighter.SetControls:FireServer(device)
