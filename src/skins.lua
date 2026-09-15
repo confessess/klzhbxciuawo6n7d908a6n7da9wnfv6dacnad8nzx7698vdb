@@ -1,11 +1,11 @@
 -- ============================================================
--- Rivals Modular -- Skins (Separate preview window)
+-- Rivals Modular -- Skins (Preview attached to main GUI)
 -- ============================================================
 
 local Skins = {}
 
 local Config, Utils, GUI, Core
-local Players, LocalPlayer, HttpService, RunService, TweenService
+local Players, LocalPlayer, HttpService, RunService
 
 local weaponsFolder = nil
 local skinCases = {}
@@ -18,14 +18,12 @@ local skinOptions = {"Select a weapon first"}
 
 local SKINS_FILE = "RivalsModular/skins.json"
 
--- Preview window state
-local previewGui = nil
-local previewWindow = nil
+-- Preview state
+local previewFrame = nil
 local previewViewport = nil
 local previewCamera = nil
 local previewModel = nil
 local previewRotation = 0
-local previewVisible = true
 
 local function debugPrint(msg)
     print("[skins] " .. msg)
@@ -158,100 +156,47 @@ local function saveSkins()
 end
 
 -- ============================================================
--- Preview Window (Separate GUI)
+-- Preview (Attached to Skins tab)
 -- ============================================================
 
-local function createPreviewWindow()
-    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-
-    previewGui = Instance.new("ScreenGui")
-    previewGui.Name = "SkinPreviewGui"
-    previewGui.ResetOnSpawn = false
-    previewGui.IgnoreGuiInset = true
-    previewGui.DisplayOrder = 998
-    previewGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    previewGui.Parent = playerGui
-
-    -- Main window
-    previewWindow = Instance.new("Frame")
-    previewWindow.Name = "PreviewWindow"
-    previewWindow.Size = UDim2.fromOffset(220, 280)
-    previewWindow.Position = UDim2.new(0, 20, 0.5, -140)
-    previewWindow.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-    previewWindow.BorderSizePixel = 0
-    previewWindow.Active = true
-    previewWindow.Draggable = true
-    previewWindow.Parent = previewGui
+local function createPreview(parent)
+    -- Container frame - positioned on right side of skins tab
+    previewFrame = Instance.new("Frame")
+    previewFrame.Name = "SkinPreview"
+    previewFrame.Size = UDim2.new(0, 180, 0, 220)
+    previewFrame.Position = UDim2.new(1, -190, 0, 10)
+    previewFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    previewFrame.BorderSizePixel = 0
+    previewFrame.Parent = parent
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = previewWindow
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = previewFrame
 
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(124, 108, 255)
     stroke.Thickness = 2
-    stroke.Transparency = 0.3
-    stroke.Parent = previewWindow
-
-    -- Title bar
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 32)
-    titleBar.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = previewWindow
-
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 12)
-    titleCorner.Parent = titleBar
-
-    local titleFix = Instance.new("Frame")
-    titleFix.Size = UDim2.new(1, 0, 0, 12)
-    titleFix.Position = UDim2.new(0, 0, 1, -12)
-    titleFix.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-    titleFix.BorderSizePixel = 0
-    titleFix.Parent = titleBar
+    stroke.Transparency = 0.4
+    stroke.Parent = previewFrame
 
     -- Title
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -40, 1, 0)
-    title.Position = UDim2.new(0, 12, 0, 0)
+    title.Size = UDim2.new(1, 0, 0, 24)
     title.BackgroundTransparency = 1
-    title.Text = "SKIN PREVIEW"
+    title.Text = "PREVIEW"
     title.TextColor3 = Color3.fromRGB(124, 108, 255)
     title.Font = Enum.Font.GothamBold
-    title.TextSize = 12
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = titleBar
+    title.TextSize = 11
+    title.Parent = previewFrame
 
-    -- Close button
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.fromOffset(24, 24)
-    closeBtn.Position = UDim2.new(1, -28, 0.5, -12)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextSize = 12
-    closeBtn.Parent = titleBar
-
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeBtn
-
-    closeBtn.MouseButton1Click:Connect(function()
-        previewVisible = false
-        previewWindow.Visible = false
-    end)
-
-    -- Viewport
+    -- Viewport - bigger for larger gun
     previewViewport = Instance.new("ViewportFrame")
-    previewViewport.Size = UDim2.new(1, -16, 1, -80)
-    previewViewport.Position = UDim2.new(0, 8, 0, 40)
+    previewViewport.Size = UDim2.new(1, -12, 1, -60)
+    previewViewport.Position = UDim2.new(0, 6, 0, 28)
     previewViewport.BackgroundColor3 = Color3.fromRGB(12, 12, 16)
     previewViewport.BackgroundTransparency = 0
     previewViewport.BorderSizePixel = 0
-    previewViewport.Parent = previewWindow
+    previewViewport.Parent = previewFrame
 
     local vpCorner = Instance.new("UICorner")
     vpCorner.CornerRadius = UDim.new(0, 8)
@@ -261,33 +206,39 @@ local function createPreviewWindow()
     previewCamera.Parent = previewViewport
     previewViewport.CurrentCamera = previewCamera
 
-    -- Lighting
-    local light = Instance.new("PointLight")
-    light.Brightness = 2.5
-    light.Range = 25
-    light.Color = Color3.fromRGB(255, 255, 255)
-    light.Parent = previewViewport
+    -- Better lighting
+    local keyLight = Instance.new("PointLight")
+    keyLight.Brightness = 3
+    keyLight.Range = 15
+    keyLight.Color = Color3.fromRGB(255, 255, 255)
+    keyLight.Parent = previewViewport
 
     local fillLight = Instance.new("PointLight")
-    fillLight.Brightness = 1
-    fillLight.Range = 20
-    fillLight.Color = Color3.fromRGB(180, 180, 255)
-    fillLight.Position = Vector3.new(5, 5, -5)
-    light.Parent = previewViewport
+    fillLight.Brightness = 1.5
+    fillLight.Range = 12
+    fillLight.Color = Color3.fromRGB(150, 150, 255)
+    fillLight.Position = Vector3.new(3, 3, -3)
+    fillLight.Parent = previewViewport
+
+    local rimLight = Instance.new("PointLight")
+    rimLight.Brightness = 1
+    rimLight.Range = 10
+    rimLight.Color = Color3.fromRGB(255, 200, 150)
+    rimLight.Position = Vector3.new(-3, 2, 3)
+    rimLight.Parent = previewViewport
 
     -- Disclaimer
     local disclaimer = Instance.new("TextLabel")
-    disclaimer.Size = UDim2.new(1, -16, 0, 32)
-    disclaimer.Position = UDim2.new(0, 8, 1, -38)
+    disclaimer.Size = UDim2.new(1, -12, 0, 26)
+    disclaimer.Position = UDim2.new(0, 6, 1, -30)
     disclaimer.BackgroundTransparency = 1
     disclaimer.Text = "Skins apply after death"
     disclaimer.TextColor3 = Color3.fromRGB(255, 180, 80)
     disclaimer.Font = Enum.Font.GothamMedium
-    disclaimer.TextSize = 11
-    disclaimer.TextWrapped = true
-    disclaimer.Parent = previewWindow
+    disclaimer.TextSize = 10
+    disclaimer.Parent = previewFrame
 
-    return previewWindow
+    return previewFrame
 end
 
 local function updatePreview(weaponName, skinName)
@@ -323,10 +274,12 @@ local function updatePreview(weaponName, skinName)
     local cf, size = previewModel:GetBoundingBox()
     local center = cf.Position
     local maxDim = math.max(size.X, size.Y, size.Z)
-    local distance = maxDim * 1.5
+
+    -- Closer camera = bigger gun
+    local distance = maxDim * 1.0
 
     previewCamera.CFrame = CFrame.new(
-        center + Vector3.new(distance, distance * 0.5, distance),
+        center + Vector3.new(distance * 0.8, distance * 0.4, distance * 0.8),
         center
     )
 
@@ -335,25 +288,22 @@ end
 
 local function startPreviewRotation()
     RunService.RenderStepped:Connect(function(dt)
-        if not previewModel or not previewCamera or not previewVisible then return end
-        previewRotation = previewRotation + dt * 0.5
+        if not previewModel or not previewCamera then return end
+        if not Core.MenuOpen then return end  -- Only rotate when menu open
+        previewRotation = previewRotation + dt * 0.4
         local cf, size = previewModel:GetBoundingBox()
         local center = cf.Position
         local maxDim = math.max(size.X, size.Y, size.Z)
-        local distance = maxDim * 1.5
+        local distance = maxDim * 1.0
         local angle = previewRotation
-        local x = math.cos(angle) * distance
-        local z = math.sin(angle) * distance
+        local x = math.cos(angle) * distance * 0.8
+        local z = math.sin(angle) * distance * 0.8
         previewCamera.CFrame = CFrame.new(
-            center + Vector3.new(x, distance * 0.3, z),
+            center + Vector3.new(x, distance * 0.4, z),
             center
         )
     end)
 end
-
--- ============================================================
--- GUI
--- ============================================================
 
 function Skins.Update(_dt) end
 
@@ -366,7 +316,6 @@ function Skins.Init(deps)
     LocalPlayer = Utils.LocalPlayer
     HttpService = game:GetService("HttpService")
     RunService = Utils.RunService
-    TweenService = game:GetService("TweenService")
 
     local weaponList = {"None"}
     local folder = getWeaponsFolder()
@@ -382,13 +331,22 @@ function Skins.Init(deps)
     task.delay(0.5, function()
         getWeaponsFolder()
         getAllSkinCases()
-        createPreviewWindow()
-        startPreviewRotation()
     end)
 
     local page = GUI.GetPage and GUI.GetPage("Skins")
     if page then
+        -- Create preview inside skins tab
+        createPreview(page)
+        startPreviewRotation()
+
         GUI.AddSection(page, "Skin Changer", 1)
+
+        -- Make room for preview - add padding
+        local spacer = Instance.new("Frame")
+        spacer.Size = UDim2.new(1, 0, 0, 0)
+        spacer.BackgroundTransparency = 1
+        spacer.LayoutOrder = 0
+        spacer.Parent = page
 
         GUI.AddDropdown(page, "Weapon",
             function() return weaponList end,
@@ -439,14 +397,6 @@ function Skins.Init(deps)
                 end
                 saveSkins()
             end, 5, true)
-
-        GUI.AddButton(page, "Toggle Preview",
-            function()
-                previewVisible = not previewVisible
-                if previewWindow then
-                    previewWindow.Visible = previewVisible
-                end
-            end, 6, false)
     end
 
     print("[rivals] Skins module initialized.")
@@ -455,9 +405,6 @@ end
 function Skins.Cleanup()
     for weapon, _ in pairs(currentSkins) do
         resetWeapon(weapon)
-    end
-    if previewGui then
-        previewGui:Destroy()
     end
 end
 
