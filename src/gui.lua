@@ -105,11 +105,10 @@ local function switchTab(name)
     for tabName, page in pairs(Pages) do
         page.Visible = (tabName == name)
     end
-
-    -- Show/hide skin preview
-    if GUI.SkinPreviewFrame then
-        GUI.SkinPreviewFrame.Visible = (name == "Skins") and IsOpen
+    if GUI.UpdatePreviewVisibility then
+        GUI.UpdatePreviewVisibility()
     end
+
     for _, child in ipairs(Sidebar:GetChildren()) do
         if child:IsA("TextButton") and child.Name:sub(1, 4) == "Tab_" then
             local lbl = child:FindFirstChild("Label")
@@ -596,11 +595,10 @@ end
 local function setOpen(state)
     IsOpen = state
     if Core then Core.MenuOpen = state end
-
-    -- Show/hide skin preview
-    if GUI.SkinPreviewFrame then
-        GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and state
+    if GUI.UpdatePreviewVisibility then
+        GUI.UpdatePreviewVisibility()
     end
+
     if state then
         MenuFrame.Visible = true
         Watermark.Visible = true
@@ -843,6 +841,14 @@ local function build()
         makeStroke(MobileButton, Theme.Stroke, 1, 0.2)
         MobileButton.MouseButton1Click:Connect(function() GUI.ToggleMenu() end)
     end
+
+    -- Update preview visibility function (called after preview exists)
+    local function updatePreviewVisibility()
+        if GUI.SkinPreviewFrame then
+            GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and IsOpen
+        end
+    end
+    GUI.UpdatePreviewVisibility = updatePreviewVisibility
 
     initDragging()
     switchTab("Legit")
