@@ -1,5 +1,5 @@
 -- ============================================================
--- Rivals Modular -- Skins (No auto-apply, exact matching)
+-- Rivals Modular -- Skins (Fixed - saves TRUE originals)
 -- ============================================================
 
 local Skins = {}
@@ -17,7 +17,7 @@ local WEAPON_LIST = {
     "Spray", "Trowel", "Uzi", "Flashbang", "Medkit", "War Horn"
 }
 
-local originalGuns = {}
+local trueOriginals = {}  -- Store TRUE originals on first access
 local appliedSkins = {}
 local selectedSkins = {}
 local skinCases = {}
@@ -64,7 +64,6 @@ local function getSkinCases()
     return skinCases
 end
 
--- Find skins that EXACTLY match the weapon's children
 local function findSkinsForWeapon(weaponName)
     local skins = {}
     local folder = getWeaponsFolder()
@@ -73,7 +72,6 @@ local function findSkinsForWeapon(weaponName)
     local weapon = folder:FindFirstChild(weaponName)
     if not weapon then return skins end
 
-    -- Get original children names and count
     local originalNames = {}
     local originalCount = 0
     for _, child in ipairs(weapon:GetChildren()) do
@@ -83,13 +81,11 @@ local function findSkinsForWeapon(weaponName)
 
     if originalCount == 0 then return skins end
 
-    -- Search all cases for exact matches
     for _, case in ipairs(getSkinCases()) do
         for _, skin in ipairs(case:GetChildren()) do
             local skinChildren = skin:GetChildren()
             local skinCount = #skinChildren
 
-            -- Must have same number of children
             if skinCount == originalCount then
                 local matchCount = 0
                 for _, skinChild in ipairs(skinChildren) do
@@ -101,7 +97,6 @@ local function findSkinsForWeapon(weaponName)
                     end
                 end
 
-                -- All children must match
                 if matchCount == originalCount then
                     table.insert(skins, skin.Name)
                 end
@@ -118,11 +113,14 @@ local function saveOriginal(weaponName)
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
     if not weapon then return end
-    if not originalGuns[weaponName] then
-        originalGuns[weaponName] = {}
+
+    -- Only save once - the first time we see the weapon (TRUE original)
+    if not trueOriginals[weaponName] then
+        trueOriginals[weaponName] = {}
         for _, child in pairs(weapon:GetChildren()) do
-            table.insert(originalGuns[weaponName], child:Clone())
+            table.insert(trueOriginals[weaponName], child:Clone())
         end
+        debugPrint("Saved TRUE original: " .. weaponName)
     end
 end
 
@@ -131,13 +129,17 @@ local function restoreOriginal(weaponName)
     if not folder then return end
     local weapon = folder:FindFirstChild(weaponName)
     if not weapon then return end
-    if originalGuns[weaponName] then
+
+    -- Restore from TRUE originals
+    if trueOriginals[weaponName] then
         weapon:ClearAllChildren()
-        for _, child in pairs(originalGuns[weaponName]) do
+        for _, child in pairs(trueOriginals[weaponName]) do
             child.Parent = weapon
         end
-        originalGuns[weaponName] = nil
+        debugPrint("Restored TRUE original: " .. weaponName)
     end
+
+    appliedSkins[weaponName] = nil
 end
 
 local function applySkin(weaponName, skinName)
@@ -150,6 +152,7 @@ local function applySkin(weaponName, skinName)
         return
     end
 
+    -- Find the skin
     local skinModel = nil
     for _, case in ipairs(getSkinCases()) do
         local found = case:FindFirstChild(skinName)
@@ -159,15 +162,19 @@ local function applySkin(weaponName, skinName)
         end
     end
     if not skinModel then
-        debugPrint("ERROR: Skin not found")
+        debugPrint("ERROR: Skin not found: " .. skinName)
         return
     end
 
+    -- Save TRUE original first (only happens once)
     saveOriginal(weaponName)
+
+    -- Clear and apply new skin directly (no need to restore first)
     weapon:ClearAllChildren()
     for _, child in pairs(skinModel:GetChildren()) do
         child:Clone().Parent = weapon
     end
+
     appliedSkins[weaponName] = true
     debugPrint("Success!")
 end
@@ -210,7 +217,6 @@ local function saveSettings()
     end)
 end
 
--- Wrap changer functions
 local function getWrapWeapons()
     if #wrapWeapons > 0 then return wrapWeapons end
     local folder = getWeaponsFolder()
@@ -307,7 +313,6 @@ function Skins.Init(deps)
     task.delay(0.5, function()
         getWeaponsFolder()
         getSkinCases()
-        -- DO NOT auto-load saved skins on start
         loadWrapSettings()
     end)
 
@@ -315,7 +320,6 @@ function Skins.Init(deps)
     if page then
         GUI.AddSection(page, "Skin Changer", 1)
 
-        -- Weapon dropdown
         GUI.AddDropdown(page, "Weapon",
             function() return WEAPON_LIST end,
             function() return currentWeapon end,
@@ -328,7 +332,7 @@ function Skins.Init(deps)
                         currentSkinList = {"No skins found"}
                         currentSkin = nil
                     else
-                        currentSkin = nil  -- Don't auto-select
+                        currentSkin = nil
                     end
                 else
                     currentSkinList = {"Select a weapon first"}
@@ -336,7 +340,6 @@ function Skins.Init(deps)
                 end
             end, 2)
 
-        -- Skin dropdown
         GUI.AddDropdown(page, "Skin",
             function() return currentSkinList end,
             function() return currentSkin end,
@@ -353,7 +356,6 @@ function Skins.Init(deps)
                 end
             end, 3)
 
-        -- Reset button
         GUI.AddButton(page, "Reset Skins",
             function()
                 for weaponName, _ in pairs(appliedSkins) do restoreOriginal(weaponName) end
@@ -365,7 +367,6 @@ function Skins.Init(deps)
                 end)
             end, 4, true)
 
-        -- Wrap changer section
         GUI.AddSection(page, "Wrap Changer", 5)
 
         GUI.AddDropdown(page, "Weapon",
