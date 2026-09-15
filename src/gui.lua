@@ -175,7 +175,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     arrow.TextSize = 8
     arrow.Parent = box
 
-    local list = Instance.new("Frame")
+    local list = Instance.new("ScrollingFrame")
     list.Size = UDim2.new(0.55, 0, 0, 0)
     list.Position = UDim2.new(0.45, 0, 0, 34)
     list.BackgroundColor3 = Theme.Background
@@ -183,6 +183,10 @@ function Components.Dropdown(page, label, options, default, callback, order)
     list.ClipsDescendants = true
     list.Visible = false
     list.ZIndex = 10
+    list.ScrollBarThickness = 4
+    list.ScrollBarImageColor3 = Theme.Stroke
+    list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    list.CanvasSize = UDim2.fromScale(0, 0)
     list.Parent = frame
     corner(list, 4)
     stroke(list)
@@ -249,7 +253,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
             rebuild()
             list.Visible = true
             local opts = getOptions()
-            tween(list, {Size = UDim2.new(0.55, 0, 0, math.min(#opts * 28, 180))})
+            tween(list, {Size = UDim2.new(0.55, 0, 0, math.min(#opts * 28, 150))})
         else
             tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
             task.delay(0.15, function() list.Visible = false end)
@@ -662,6 +666,10 @@ local function build()
     UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
         if input.KeyCode == Enum.KeyCode.RightControl then
+            if IsLoading then
+                print("[GUI] BLOCKED - Wait for GUI ready!")
+                return
+            end
             GUI.ToggleMenu()
         end
     end)
@@ -736,7 +744,9 @@ function GUI.Init(deps)
         if MainFrame then
             MainFrame.Active = true
         end
-        print("[rivals] GUI ready.")
+        print("================================")
+        print("[rivals] GUI READY - You can now press RightCtrl")
+        print("================================")
     end)
 
     print("[rivals] GUI initialized.")

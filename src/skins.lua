@@ -9,7 +9,7 @@ local Players, LocalPlayer, HttpService, RunService
 
 -- CORRECT skin mapping from user data
 local CORRECT_SKINS = {
-    ["Assault Rifle"] = {"Phoenix Rifle", "AK-47", "Boneclaw Rifle", "Pearl Rifle", "AUG", "Gingerbread AUG", "Tommy Gun", "AKEY-47", "10B Visits", "Glorious Assault Rifle"},
+    ["Assault Rifle"] = {"Phoenix Rifle", "AK-47", "Boneclaw Rifle", "Pearl Rifle", "Augmented Rifle", "Gingerbread Augmented Rifle", "Tommy Gun", "AKEY-47", "10B Visits", "Glorious Assault Rifle"},
     ["Battle Axe"] = {"Ban Axe", "Nordic Axe", "Cerulean Axe", "Tiki Axe", "Balloon Axe", "Mimic Axe", "Street Sign", "The Shred", "Keyttle Axe", "Glorious Battle Axe"},
     ["Bow"] = {"Compound Bow", "Bat Bow", "Dream Bow", "Frostbite Bow", "Palm Bow", "Raven Bow", "Balloon Bow", "Beloved Bow", "Key Bow", "Glorious Bow"},
     ["Burst Rifle"] = {"Pine Burst", "Spectral Burst", "Aqua Burst", "Electro Rifle", "FAMAS", "Sand FAMAS", "Pixel Burst", "Keyst Rifle", "Glorious Burst Rifle"},
@@ -99,9 +99,7 @@ local ALL_WRAPS = {
     "Boomore", "Brianore", "Nekore", "Nosnite", "Sensite", "Shadore", "Scribble", "Net", "Rivalry", "Only Six",
 }
 
-local WEAPON_LIST = {"None"}
-for weapon, _ in pairs(CORRECT_SKINS) do table.insert(WEAPON_LIST, weapon) end
-table.sort(WEAPON_LIST)
+local WEAPON_LIST = {"None", "Assault Rifle", "Battle Axe", "Bow", "Burst Rifle", "Chainsaw", "Crossbow", "Daggers", "Distortion", "Energy Rifle", "Energy Pistols", "Exogun", "Fists", "Flamethrower", "Flare Gun", "Flashbang", "Freeze Ray", "Grappler", "Grenade", "Grenade Launcher", "Gunblade", "Handgun", "Jump Pad", "Katana", "Knife", "Maul", "Medkit", "Minigun", "Molotov", "Paintball Gun", "Permafrost", "Revolver", "Riot Shield", "RPG", "Satchel", "Scythe", "Shorty", "Shotgun", "Slingshot", "Smoke Grenade", "Sniper", "Spear", "Spray", "Subspace Tripmine", "Trowel", "Uzi", "War Horn", "Warper", "Warpstone"}
 
 local weaponsFolder = nil
 local skinCases = {}
@@ -181,19 +179,36 @@ end
 local function applySkin(weaponName, skinName)
     debugPrint("Applying: " .. weaponName .. " -> " .. skinName)
     local folder = getWeaponsFolder()
-    if not folder then return false end
+    if not folder then 
+        debugPrint("ERROR: No weapons folder")
+        return false 
+    end
     local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then return false end
+    if not weapon then 
+        debugPrint("ERROR: Weapon not found: " .. weaponName)
+        return false 
+    end
 
     local skinModel = nil
     for _, case in ipairs(getAllSkinCases()) do
         local found = case:FindFirstChild(skinName)
         if found then
             skinModel = found
+            debugPrint("Found skin in: " .. case.Name)
             break
         end
     end
-    if not skinModel then return false end
+    if not skinModel then 
+        debugPrint("ERROR: Skin not found: " .. skinName)
+        return false 
+    end
+
+    -- Check part count
+    local weaponParts = #weapon:GetChildren()
+    local skinParts = #skinModel:GetChildren()
+    if weaponParts ~= skinParts then
+        debugPrint("WARNING: Part count mismatch! Weapon: " .. weaponParts .. ", Skin: " .. skinParts)
+    end
 
     saveOriginal(weaponName)
     weapon:ClearAllChildren()
