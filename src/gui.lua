@@ -383,12 +383,15 @@ local function switchTab(name)
     if ActiveTab == name then return end
     ActiveTab = name
 
-    for tabName, page in pairs(Pages) do
-        page.Visible = (tabName == name)
+    local ok, err = pcall(function()
+        for tabName, page in pairs(Pages) do
+            page.Visible = (tabName == name)
+        end
+        GUI.UpdatePreviewVisibility()
+    end)
+    if not ok then
+        warn("[GUI] Tab error: " .. tostring(err))
     end
-
-    -- Update preview visibility
-    GUI.UpdatePreviewVisibility()
 
     -- Update tab styles
     for _, child in ipairs(TabBar:GetChildren()) do
@@ -628,8 +631,13 @@ function GUI.Init(deps)
     Utils = deps.Utils
     Core = deps.Core
 
-    build()
-    createPreviewWindows()
+    local ok, err = pcall(function()
+        build()
+        createPreviewWindows()
+    end)
+    if not ok then
+        warn("[GUI] Build error: " .. tostring(err))
+    end
 
     -- Update positions when main GUI moves
     if TitleBar then
