@@ -178,46 +178,106 @@ end
 
 local function applySkin(weaponName, skinName)
     debugPrint("Applying: " .. weaponName .. " -> " .. skinName)
-    local folder = getWeaponsFolder()
-    if not folder then 
-        debugPrint("ERROR: No weapons folder")
-        return false 
-    end
-    local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then 
-        debugPrint("ERROR: Weapon not found: " .. weaponName)
-        return false 
-    end
 
-    local skinModel = nil
-    for _, case in ipairs(getAllSkinCases()) do
-        local found = case:FindFirstChild(skinName)
-        if found then
-            skinModel = found
-            debugPrint("Found skin in: " .. case.Name)
-            break
+    local ok, err = pcall(function()
+        local folder = getWeaponsFolder()
+        if not folder then 
+            debugPrint("ERROR: No weapons folder")
+            return false 
         end
-    end
-    if not skinModel then 
-        debugPrint("ERROR: Skin not found: " .. skinName)
-        return false 
+        local weapon = folder:FindFirstChild(weaponName)
+        if not weapon then 
+            debugPrint("ERROR: Weapon not found: " .. weaponName)
+            return false 
+        end
+
+        local skinModel = nil
+        for _, case in ipairs(getAllSkinCases()) do
+            local found = case:FindFirstChild(skinName)
+            if found then
+                skinModel = found
+                debugPrint("Found skin in: " .. case.Name)
+                break
+            end
+        end
+        if not skinModel then 
+            debugPrint("ERROR: Skin not found: " .. skinName)
+            return false 
+        end
+
+        saveOriginal(weaponName)
+
+        -- Store existing joints before clearing (including joints inside parts)
+        local existingJoints = {}
+        for _, child in ipairs(weapon:GetDescendants()) do
+            if child:IsA("Motor6D") or child:IsA("Weld") or child:IsA("WeldConstraint") then
+                table.insert(existingJoints, {
+                    Part0 = child.Part0,
+                    Part1 = child.Part1,
+                    C0 = child.C0,
+                    C1 = child.C1,
+                    Name = child.Name,
+                    Class = child.ClassName
+                })
+            end
+        end
+
+        -- Also store joints that are children of parts
+        for _, part in ipairs(weapon:GetChildren()) do
+            if part:IsA("BasePart") then
+                for _, child in ipairs(part:GetChildren()) do
+                    if child:IsA("Motor6D") or child:IsA("Weld") then
+                        table.insert(existingJoints, {
+                            Part0 = child.Part0,
+                            Part1 = child.Part1,
+                            C0 = child.C0,
+                            C1 = child.C1,
+                            Name = child.Name,
+                            Class = child.ClassName
+                        })
+                    end
+                end
+            end
+        end
+
+        weapon:ClearAllChildren()
+        for _, child in ipairs(skinModel:GetChildren()) do
+            child:Clone().Parent = weapon
+        end
+
+        -- Restore joints if skin doesn't have them
+        local hasJoints = false
+        for _, child in ipairs(weapon:GetDescendants()) do
+            if child:IsA("Motor6D") or child:IsA("Weld") then
+                hasJoints = true
+                break
+            end
+        end
+
+        if not hasJoints then
+            for _, jointData in ipairs(existingJoints) do
+                if jointData.Part0 and jointData.Part1 and jointData.Part0.Parent and jointData.Part1.Parent then
+                    local joint = Instance.new(jointData.Class)
+                    joint.Name = jointData.Name
+                    joint.Part0 = jointData.Part0
+                    joint.Part1 = jointData.Part1
+                    joint.C0 = jointData.C0
+                    joint.C1 = jointData.C1
+                    joint.Parent = jointData.Part0
+                end
+            end
+        end
+
+        currentSkins[weaponName] = skinName
+        debugPrint("Applied!")
+        return true
+    end)
+
+    if not ok then
+        debugPrint("CRASH PREVENTED: " .. tostring(err))
+        return false
     end
 
-    -- Check part count
-    local weaponParts = #weapon:GetChildren()
-    local skinParts = #skinModel:GetChildren()
-    if weaponParts ~= skinParts then
-        debugPrint("WARNING: Part count mismatch! Weapon: " .. weaponParts .. ", Skin: " .. skinParts)
-    end
-
-    saveOriginal(weaponName)
-    weapon:ClearAllChildren()
-    for _, child in ipairs(skinModel:GetChildren()) do
-        child:Clone().Parent = weapon
-    end
-
-    currentSkins[weaponName] = skinName
-    debugPrint("Applied!")
     return true
 end
 
