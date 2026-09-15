@@ -1,32 +1,24 @@
 -- ============================================================
--- RIVALS GUI v3 - With icons and purple underglow
+-- RIVALS GUI - Minimal working version
 -- ============================================================
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- GUI table (defined early to prevent nil errors)
 local GUI = {}
 
--- Theme
 local Theme = {
     Background = Color3.fromRGB(26, 26, 36),
     Darker = Color3.fromRGB(20, 20, 28),
-    Card = Color3.fromRGB(30, 30, 42),
     Element = Color3.fromRGB(35, 35, 48),
     ElementHover = Color3.fromRGB(42, 42, 58),
     Stroke = Color3.fromRGB(50, 50, 68),
     Text = Color3.fromRGB(220, 220, 235),
     TextDim = Color3.fromRGB(100, 100, 120),
     Accent = Color3.fromRGB(130, 100, 255),
-    AccentLight = Color3.fromRGB(160, 130, 255),
     Blue = Color3.fromRGB(80, 140, 255),
-    Green = Color3.fromRGB(60, 200, 100),
 }
 
-local TWEEN = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
--- Icon IDs
 local Icons = {
     Combat = "rbxassetid://93112623799121",
     Visuals = "rbxassetid://77636811910093",
@@ -35,14 +27,13 @@ local Icons = {
     Settings = "rbxassetid://124034566612418",
 }
 
--- State
 local ScreenGui, MainFrame, TabBar, ContentHost
 local Pages = {}
 local ActiveTab = nil
 local IsOpen = false
 
 local function tween(obj, props)
-    TweenService:Create(obj, TWEEN, props):Play()
+    TweenService:Create(obj, TweenInfo.new(0.15), props):Play()
 end
 
 local function corner(parent, r)
@@ -51,18 +42,14 @@ local function corner(parent, r)
     c.Parent = parent
 end
 
-local function stroke(parent, color, t, trans)
+local function stroke(parent, color, t)
     local s = Instance.new("UIStroke")
     s.Color = color or Theme.Stroke
     s.Thickness = t or 1
-    s.Transparency = trans or 0
     s.Parent = parent
 end
 
--- ============================================================
--- COMPONENTS
--- ============================================================
-
+-- Components
 local Components = {}
 
 function Components.Section(page, text, order)
@@ -76,7 +63,6 @@ function Components.Section(page, text, order)
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.LayoutOrder = order or 0
     lbl.Parent = page
-    return lbl
 end
 
 function Components.Toggle(page, label, default, callback, order)
@@ -162,7 +148,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     box.AutoButtonColor = false
     box.Parent = frame
     corner(box, 4)
-    stroke(box, Theme.Stroke, 1, 0.5)
+    stroke(box)
 
     local valueLbl = Instance.new("TextLabel")
     valueLbl.Size = UDim2.new(1, -30, 1, 0)
@@ -188,14 +174,14 @@ function Components.Dropdown(page, label, options, default, callback, order)
     local list = Instance.new("Frame")
     list.Size = UDim2.new(0.55, 0, 0, 0)
     list.Position = UDim2.new(0.45, 0, 0, 34)
-    list.BackgroundColor3 = Theme.Card
+    list.BackgroundColor3 = Theme.Background
     list.BorderSizePixel = 0
     list.ClipsDescendants = true
     list.Visible = false
     list.ZIndex = 10
     list.Parent = frame
     corner(list, 4)
-    stroke(list, Theme.Stroke, 1, 0.3)
+    stroke(list)
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -208,7 +194,6 @@ function Components.Dropdown(page, label, options, default, callback, order)
         for _, child in ipairs(list:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
-
         for i, opt in ipairs(options) do
             local optBtn = Instance.new("TextButton")
             optBtn.Size = UDim2.new(1, 0, 0, 26)
@@ -248,8 +233,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
         if expanded then
             rebuild()
             list.Visible = true
-            local h = math.min(#options * 28, 180)
-            tween(list, {Size = UDim2.new(0.55, 0, 0, h)})
+            tween(list, {Size = UDim2.new(0.55, 0, 0, math.min(#options * 28, 180))})
         else
             tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
             task.delay(0.15, function() list.Visible = false end)
@@ -327,9 +311,7 @@ function Components.Slider(page, label, min, max, default, callback, order)
     end)
 
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
 
     UserInputService.InputChanged:Connect(function(input)
@@ -362,51 +344,28 @@ function Components.Button(page, label, callback, order, isDanger)
         if callback then pcall(callback) end
     end)
 
-    btn.MouseEnter:Connect(function()
-        tween(btn, {BackgroundColor3 = isDanger and Color3.fromRGB(200, 70, 70) or Theme.ElementHover})
-    end)
-    btn.MouseLeave:Connect(function()
-        tween(btn, {BackgroundColor3 = isDanger and Color3.fromRGB(180, 60, 60) or Theme.Element})
-    end)
-
     return btn
 end
 
--- ============================================================
--- TAB SYSTEM WITH ICONS
--- ============================================================
+GUI.Components = Components
 
--- Early no-op definition (will be overridden after previews created)
-GUI.UpdatePreviewVisibility = function() end
-
+-- Tab system
 local function switchTab(name)
     if ActiveTab == name then return end
     ActiveTab = name
-
-    local ok, err = pcall(function()
-        for tabName, page in pairs(Pages) do
-            page.Visible = (tabName == name)
-        end
-        GUI.UpdatePreviewVisibility()
-    end)
-    if not ok then
-        warn("[GUI] Tab error: " .. tostring(err))
+    for tabName, page in pairs(Pages) do
+        page.Visible = (tabName == name)
     end
-
-    -- Update tab styles
     for _, child in ipairs(TabBar:GetChildren()) do
         if child:IsA("TextButton") then
             local isActive = (child.Name == "Tab_" .. name)
             local icon = child:FindFirstChild("Icon")
             local glow = child:FindFirstChild("Glow")
-
             if icon then
-                tween(icon, {ImageColor3 = isActive and Theme.AccentLight or Color3.fromRGB(180, 180, 200)})
+                tween(icon, {ImageColor3 = isActive and Theme.Accent or Color3.fromRGB(180, 180, 200)})
             end
-
             if glow then
                 tween(glow, {BackgroundTransparency = isActive and 0.3 or 1})
-                tween(glow, {Size = isActive and UDim2.new(0.5, 0, 0, 2) or UDim2.new(0, 0, 0, 2)})
             end
         end
     end
@@ -415,34 +374,27 @@ end
 local function createTab(name, iconId, order)
     local btn = Instance.new("TextButton")
     btn.Name = "Tab_" .. name
-    btn.Size = UDim2.new(0, 95, 1, 0)
+    btn.Size = UDim2.new(0, 80, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = ""
     btn.AutoButtonColor = false
     btn.LayoutOrder = order
     btn.Parent = TabBar
 
-    -- Icon
+    local iconSize = (name == "Skins") and 40 or 28
     local icon = Instance.new("ImageLabel")
     icon.Name = "Icon"
-    -- Skins icon (paintbrush) needs bigger size
-    if name == "Skins" then
-        icon.Size = UDim2.fromOffset(56, 56)
-        icon.Position = UDim2.new(0.5, -28, 0.5, -28)
-    else
-        icon.Size = UDim2.fromOffset(32, 32)
-        icon.Position = UDim2.new(0.5, -16, 0.5, -16)
-    end
+    icon.Size = UDim2.fromOffset(iconSize, iconSize)
+    icon.Position = UDim2.new(0.5, -iconSize/2, 0.5, -iconSize/2)
     icon.BackgroundTransparency = 1
     icon.Image = iconId
     icon.ImageColor3 = Color3.fromRGB(180, 180, 200)
     icon.ScaleType = Enum.ScaleType.Fit
     icon.Parent = btn
 
-    -- Purple underglow
     local glow = Instance.new("Frame")
     glow.Name = "Glow"
-    glow.Size = UDim2.new(0, 0, 0, 2)
+    glow.Size = UDim2.new(0.5, 0, 0, 2)
     glow.Position = UDim2.new(0.25, 0, 1, -2)
     glow.BackgroundColor3 = Theme.Accent
     glow.BorderSizePixel = 0
@@ -450,25 +402,10 @@ local function createTab(name, iconId, order)
     glow.Parent = btn
     corner(glow, 1)
 
-    -- Glow shadow effect
-    local glowShadow = Instance.new("ImageLabel")
-    glowShadow.Name = "GlowShadow"
-    glowShadow.Size = UDim2.new(0.5, 20, 0, 8)
-    glowShadow.Position = UDim2.new(0.25, -10, 1, -6)
-    glowShadow.BackgroundTransparency = 1
-    glowShadow.Image = "rbxassetid://5554236805"
-    glowShadow.ImageColor3 = Theme.Accent
-    glowShadow.ImageTransparency = 0.5
-    glowShadow.ScaleType = Enum.ScaleType.Slice
-    glowShadow.SliceCenter = Rect.new(23, 23, 277, 277)
-    glowShadow.Visible = false
-    glowShadow.Parent = btn
-
     btn.MouseButton1Click:Connect(function()
         switchTab(name)
     end)
 
-    -- Page
     local page = Instance.new("ScrollingFrame")
     page.Name = "Page_" .. name
     page.Size = UDim2.fromScale(1, 1)
@@ -497,10 +434,136 @@ local function createTab(name, iconId, order)
     return page
 end
 
--- ============================================================
--- MAIN GUI
--- ============================================================
+-- Preview windows
+local PreviewGui, SkinPreviewWindow, ESPPreviewWindow
 
+local function updatePreviewPositions()
+    if not MainFrame then return end
+    local pos = MainFrame.AbsolutePosition
+    local size = MainFrame.AbsoluteSize
+    if ESPPreviewWindow then
+        ESPPreviewWindow.Position = UDim2.new(0, pos.X - 225, 0, pos.Y)
+        ESPPreviewWindow.Size = UDim2.fromOffset(220, size.Y)
+    end
+    if SkinPreviewWindow then
+        SkinPreviewWindow.Position = UDim2.new(0, pos.X + size.X + 5, 0, pos.Y)
+    end
+end
+
+GUI.UpdatePreviewVisibility = function()
+    if GUI.SkinPreviewFrame then
+        GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and IsOpen
+    end
+    if GUI.ESPPreviewFrame then
+        GUI.ESPPreviewFrame.Visible = (ActiveTab == "Visuals") and IsOpen
+    end
+    updatePreviewPositions()
+end
+
+local function createPreviewWindows()
+    local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+    PreviewGui = Instance.new("ScreenGui")
+    PreviewGui.Name = "RivalsPreviews"
+    PreviewGui.ResetOnSpawn = false
+    PreviewGui.IgnoreGuiInset = true
+    PreviewGui.DisplayOrder = 998
+    PreviewGui.Parent = playerGui
+
+    -- ESP Preview (left, full height)
+    ESPPreviewWindow = Instance.new("Frame")
+    ESPPreviewWindow.Size = UDim2.fromOffset(220, 520)
+    ESPPreviewWindow.BackgroundColor3 = Theme.Darker
+    ESPPreviewWindow.BorderSizePixel = 0
+    ESPPreviewWindow.Visible = false
+    ESPPreviewWindow.Parent = PreviewGui
+    corner(ESPPreviewWindow, 8)
+    stroke(ESPPreviewWindow)
+
+    local espTitle = Instance.new("TextLabel")
+    espTitle.Size = UDim2.new(1, 0, 0, 32)
+    espTitle.BackgroundTransparency = 1
+    espTitle.Text = "ESP PREVIEW"
+    espTitle.TextColor3 = Theme.Accent
+    espTitle.Font = Enum.Font.GothamBold
+    espTitle.TextSize = 12
+    espTitle.Parent = ESPPreviewWindow
+
+    local espViewport = Instance.new("ViewportFrame")
+    espViewport.Size = UDim2.new(1, -16, 1, -40)
+    espViewport.Position = UDim2.new(0, 8, 0, 36)
+    espViewport.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+    espViewport.BorderSizePixel = 0
+    espViewport.Parent = ESPPreviewWindow
+    corner(espViewport, 6)
+
+    local espCam = Instance.new("Camera")
+    espCam.Parent = espViewport
+    espViewport.CurrentCamera = espCam
+
+    local espLight = Instance.new("PointLight")
+    espLight.Brightness = 3
+    espLight.Range = 25
+    espLight.Parent = espViewport
+
+    -- Skin Preview (right, smaller)
+    SkinPreviewWindow = Instance.new("Frame")
+    SkinPreviewWindow.Size = UDim2.fromOffset(200, 280)
+    SkinPreviewWindow.BackgroundColor3 = Theme.Darker
+    SkinPreviewWindow.BorderSizePixel = 0
+    SkinPreviewWindow.Visible = false
+    SkinPreviewWindow.Parent = PreviewGui
+    corner(SkinPreviewWindow, 8)
+    stroke(SkinPreviewWindow)
+
+    local skinTitle = Instance.new("TextLabel")
+    skinTitle.Size = UDim2.new(1, 0, 0, 28)
+    skinTitle.BackgroundTransparency = 1
+    skinTitle.Text = "SKIN PREVIEW"
+    skinTitle.TextColor3 = Theme.Accent
+    skinTitle.Font = Enum.Font.GothamBold
+    skinTitle.TextSize = 11
+    skinTitle.Parent = SkinPreviewWindow
+
+    local skinViewport = Instance.new("ViewportFrame")
+    skinViewport.Size = UDim2.new(1, -16, 1, -70)
+    skinViewport.Position = UDim2.new(0, 8, 0, 32)
+    skinViewport.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+    skinViewport.BorderSizePixel = 0
+    skinViewport.Parent = SkinPreviewWindow
+    corner(skinViewport, 6)
+
+    local skinCam = Instance.new("Camera")
+    skinCam.Parent = skinViewport
+    skinViewport.CurrentCamera = skinCam
+
+    local skinLight = Instance.new("PointLight")
+    skinLight.Brightness = 3
+    skinLight.Range = 20
+    skinLight.Parent = skinViewport
+
+    local disclaimer = Instance.new("TextLabel")
+    disclaimer.Size = UDim2.new(1, -16, 0, 28)
+    disclaimer.Position = UDim2.new(0, 8, 1, -34)
+    disclaimer.BackgroundTransparency = 1
+    disclaimer.Text = "Skins apply after death"
+    disclaimer.TextColor3 = Color3.fromRGB(255, 180, 80)
+    disclaimer.Font = Enum.Font.GothamMedium
+    disclaimer.TextSize = 10
+    disclaimer.Parent = SkinPreviewWindow
+
+    GUI.SkinPreviewFrame = SkinPreviewWindow
+    GUI.SkinPreviewViewport = skinViewport
+    GUI.SkinPreviewCamera = skinCam
+    GUI.ESPPreviewFrame = ESPPreviewWindow
+    GUI.ESPPreviewViewport = espViewport
+    GUI.ESPPreviewCamera = espCam
+
+    task.wait(0.1)
+    updatePreviewPositions()
+end
+
+-- Build main GUI
 local function build()
     local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 
@@ -521,9 +584,8 @@ local function build()
     MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
     corner(MainFrame, 8)
-    stroke(MainFrame, Theme.Stroke, 1, 0.3)
+    stroke(MainFrame)
 
-    -- Title
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(0, 100, 0, 40)
     title.Position = UDim2.new(0, 20, 0, 0)
@@ -535,7 +597,6 @@ local function build()
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = MainFrame
 
-    -- Close button
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.fromOffset(28, 28)
     closeBtn.Position = UDim2.new(1, -36, 0, 6)
@@ -550,13 +611,12 @@ local function build()
     corner(closeBtn, 4)
 
     closeBtn.MouseButton1Click:Connect(function()
-        setOpen(false)
+        GUI.ToggleMenu()
     end)
 
-    -- Tab bar
     TabBar = Instance.new("Frame")
     TabBar.Size = UDim2.new(1, -40, 0, 52)
-    TabBar.Position = UDim2.new(0, 20, 0, 52)
+    TabBar.Position = UDim2.new(0, 20, 0, 44)
     TabBar.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
     TabBar.BorderSizePixel = 0
     TabBar.Parent = MainFrame
@@ -569,117 +629,42 @@ local function build()
     tabLayout.Padding = UDim.new(0, 8)
     tabLayout.Parent = TabBar
 
-    -- Content
     ContentHost = Instance.new("Frame")
     ContentHost.Size = UDim2.new(1, -40, 1, -108)
-    ContentHost.Position = UDim2.new(0, 20, 0, 108)
+    ContentHost.Position = UDim2.new(0, 20, 0, 104)
     ContentHost.BackgroundTransparency = 1
     ContentHost.ClipsDescendants = true
     ContentHost.Parent = MainFrame
 
-    -- Create tabs with icons
     createTab("Combat", Icons.Combat, 1)
     createTab("Visuals", Icons.Visuals, 2)
     createTab("Skins", Icons.Skins, 3)
     createTab("Misc", Icons.Misc, 4)
     createTab("Settings", Icons.Settings, 5)
 
-    -- Keybind
     UserInputService.InputBegan:Connect(function(input, gp)
         if gp then return end
         if input.KeyCode == Enum.KeyCode.RightControl then
-            setOpen(not IsOpen)
+            GUI.ToggleMenu()
         end
     end)
-
-    -- Update preview visibility function (defined after frames exist)
-    local function updatePreviewVisibility()
-        if GUI.SkinPreviewFrame then
-            GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and IsOpen
-        end
-        if GUI.ESPPreviewFrame then
-            GUI.ESPPreviewFrame.Visible = (ActiveTab == "Visuals") and IsOpen
-        end
-    end
-    GUI.UpdatePreviewVisibility = updatePreviewVisibility
 
     switchTab("Combat")
 end
 
-function setOpen(state)
-    IsOpen = state
-    if state then
+function GUI.ToggleMenu()
+    IsOpen = not IsOpen
+    GUI.UpdatePreviewVisibility()
+    if IsOpen then
         MainFrame.Visible = true
         MainFrame.Size = UDim2.fromOffset(780, 0)
         tween(MainFrame, {Size = UDim2.fromOffset(780, 520)})
     else
-        tween(MainFrame, {Size = UDim2.fromOffset(680, 0)})
+        tween(MainFrame, {Size = UDim2.fromOffset(780, 0)})
         task.delay(0.2, function()
             MainFrame.Visible = false
         end)
     end
-end
-
--- ============================================================
--- MODULE INIT
--- ============================================================
-
-local GUI = {}
-
-function GUI.Init(deps)
-    Config = deps.Config
-    Utils = deps.Utils
-    Core = deps.Core
-
-    local ok, err = pcall(function()
-        build()
-        createPreviewWindows()
-        -- Register demo controls for testing
-        local combat = Pages["Combat"]
-        if combat then
-            Components.Section(combat, "Aimbot", 1)
-            Components.Toggle(combat, "Enable", false, function(v) print("Aimbot:", v) end, 2)
-            Components.Dropdown(combat, "Target Part", {"Head", "Chest", "Pelvis"}, "Head", function(v) print("Target:", v) end, 3)
-            Components.Slider(combat, "FOV", 0, 360, 90, function(v) print("FOV:", v) end, 4)
-        end
-
-        local visuals = Pages["Visuals"]
-        if visuals then
-            Components.Section(visuals, "ESP", 1)
-            Components.Toggle(visuals, "Enable Glow", false, function(v) print("ESP:", v) end, 2)
-        end
-
-        local settings = Pages["Settings"]
-        if settings then
-            Components.Button(settings, "Unload", function() 
-                if Core and Core.Unload then Core.Unload() end
-            end, 1, true)
-        end
-    end)
-    if not ok then
-        warn("[GUI] Build error: " .. tostring(err))
-    end
-
-    -- Update positions when main GUI moves
-    if TitleBar then
-        TitleBar.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local conn
-                conn = game:GetService("RunService").RenderStepped:Connect(function()
-                    updatePreviewPositions()
-                    if not IsOpen then
-                        conn:Disconnect()
-                    end
-                end)
-            end
-        end)
-    end
-
-    print("[rivals] GUI initialized.")
-end
-
-function GUI.ToggleMenu()
-    setOpen(not IsOpen)
 end
 
 function GUI.IsOpen()
@@ -695,7 +680,20 @@ function GUI.Cleanup()
     if PreviewGui then PreviewGui:Destroy() end
 end
 
--- Expose components for other modules
-GUI.Components = Components
+function GUI.Init(deps)
+    Config = deps.Config
+    Utils = deps.Utils
+    Core = deps.Core
+
+    local ok, err = pcall(function()
+        build()
+        createPreviewWindows()
+    end)
+    if not ok then
+        warn("[GUI] Error: " .. tostring(err))
+    end
+
+    print("[rivals] GUI initialized.")
+end
 
 return GUI
