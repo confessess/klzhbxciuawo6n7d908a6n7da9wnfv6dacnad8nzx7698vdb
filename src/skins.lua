@@ -286,10 +286,30 @@ local function updatePreview(weaponName, skinName)
     previewRotation = 0
 end
 
+local currentTab = nil
+
 local function startPreviewRotation()
+    -- Track tab changes
+    local gui = Core.GUI
+    if gui then
+        -- Hook into tab switching by checking page visibility
+        task.spawn(function()
+            while true do
+                task.wait(0.1)
+                if previewFrame then
+                    local skinsPage = gui.GetPage and gui.GetPage("Skins")
+                    if skinsPage then
+                        previewFrame.Visible = skinsPage.Visible
+                    end
+                end
+            end
+        end)
+    end
+
     RunService.RenderStepped:Connect(function(dt)
         if not previewModel or not previewCamera then return end
-        if not Core.MenuOpen then return end  -- Only rotate when menu open
+        if not Core.MenuOpen then return end
+        if previewFrame and not previewFrame.Visible then return end
         previewRotation = previewRotation + dt * 0.4
         local cf, size = previewModel:GetBoundingBox()
         local center = cf.Position
