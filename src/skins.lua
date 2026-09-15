@@ -1,5 +1,6 @@
 -- ============================================================
--- Rivals Modular -- Skins (Debug version)
+-- Rivals Modular -- Skins (Working version)
+-- Based on gwnrdt method - proper skin swapping
 -- ============================================================
 
 local Skins = {}
@@ -7,34 +8,22 @@ local Skins = {}
 local Config, Utils, GUI, Core
 local Players, LocalPlayer, HttpService
 
-local WEAPON_LIST = {
-    "None", "Assault Rifle", "Battle Axe", "Bow", "Burst Rifle", "Chainsaw",
-    "Crossbow", "Daggers", "Energy Rifle", "Energy Pistols", "Exogun", "Fists",
-    "Flamethrower", "Flare Gun", "Freeze Ray", "Grenade", "Grenade Launcher",
-    "Gunblade", "Handgun", "Katana", "Knife", "Minigun", "Molotov",
-    "Paintball Gun", "Revolver", "RPG", "Riot Shield", "Scythe", "Shorty",
-    "Shotgun", "Slingshot", "Smoke Grenade", "Sniper", "Subspace Tripmine",
-    "Spray", "Trowel", "Uzi", "Flashbang", "Medkit", "War Horn"
-}
-
-local trueOriginals = {}
-local appliedSkins = {}
-local selectedSkins = {}
-local skinCases = {}
+-- State
 local weaponsFolder = nil
-local wrapConfig = {}
-local wrapWeapons = {}
-local wrapList = {}
+local skinCases = {}
+local originalWeapons = {}  -- Store originals per weapon
+local currentSkins = {}     -- Current applied skins
 
-local SKINS_FILE = "RivalsModular/WeaponSkins.json"
-local WRAPS_FILE = "RivalsModular/WrapChanger.json"
+-- Dropdown state
+local selectedWeapon = "None"
+local selectedSkin = "None"
+local skinOptions = {"Select a weapon first"}
 
-local currentWeapon = "None"
-local currentSkinList = {"Select a weapon first"}
-local currentSkin = nil
-local currentWrapWeapon = "none"
-local currentWrapList = {"none"}
-local currentWrap = "none"
+local SKINS_FILE = "RivalsModular/skins.json"
+
+-- ============================================================
+-- Core Functions
+-- ============================================================
 
 local function debugPrint(msg)
     print("[skins] " .. msg)
@@ -45,294 +34,258 @@ local function getWeaponsFolder()
     local ok, result = pcall(function()
         return LocalPlayer.PlayerScripts.Assets.ViewModels.Weapons
     end)
-    if ok and result then
-        weaponsFolder = result
-        debugPrint("Found weapons folder")
-    else
-        debugPrint("ERROR: Weapons folder not found")
-    end
+    if ok then weaponsFolder = result end
     return weaponsFolder
 end
 
-local function getSkinCases()
+local function getAllSkinCases()
     if #skinCases > 0 then return skinCases end
     local ok, viewModels = pcall(function()
         return LocalPlayer.PlayerScripts.Assets.ViewModels
     end)
-    if not ok or not viewModels then
-        debugPrint("ERROR: ViewModels not found")
-        return skinCases
-    end
+    if not ok then return skinCases end
 
     for _, child in ipairs(viewModels:GetChildren()) do
         if child:IsA("Folder") and child.Name ~= "Weapons" then
             table.insert(skinCases, child)
         end
     end
-    debugPrint("Found " .. #skinCases .. " skin cases")
     return skinCases
 end
 
-local function findSkinsForWeapon(weaponName)
+-- Find which weapon a skin belongs to by checking if parts match
+local function findWeaponForSkin(skinName)
+    local folder = getWeaponsFolder()
+    if not folder then return nil end
+
+    -- Search all cases for this skin
+    local skinModel = nil
+    for _, case in ipairs(getAllSkinCases()) do
+        local found = case:FindFirstChild(skinName)
+        if found then
+            skinModel = found
+            break
+        end
+    end
+    if not skinModel then return nil end
+
+    -- Get skin children names
+    local skinParts = {}
+    for _, child in ipairs(skinModel:GetChildren()) do
+        table.insert(skinParts, child.Name)
+    end
+
+    -- Find weapon with matching parts
+    for _, weapon in ipairs(folder:GetChildren()) do
+        if weapon:IsA("Folder") or weapon:IsA("Model") then
+            local weaponParts = {}
+            for _, child in ipairs(weapon:GetChildren()) do
+                table.insert(weaponParts, child.Name)
+            end
+
+            -- Check if all skin parts exist in weapon
+            local match = true
+            for _, skinPart in ipairs(skinParts) do
+                local found = false
+                for _, weaponPart in ipairs(weaponParts) do
+                    if skinPart == weaponPart then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    match = false
+                    break
+                end
+            end
+
+            if match and #skinParts > 0 then
+                return weapon.Name
+            end
+        end
+    end
+
+    return nil
+end
+
+-- Get all skins for a weapon
+local function getSkinsForWeapon(weaponName)
     local skins = {}
     local folder = getWeaponsFolder()
-    if not folder then
-        debugPrint("ERROR: No weapons folder in findSkins")
-        return skins
-    end
+    if not folder then return skins end
 
     local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then
-        debugPrint("ERROR: Weapon not found: " .. weaponName)
-        return skins
-    end
+    if not weapon then return skins end
 
-    local originalNames = {}
-    local originalCount = 0
+    -- Get weapon part names
+    local weaponParts = {}
     for _, child in ipairs(weapon:GetChildren()) do
-        table.insert(originalNames, child.Name)
-        originalCount = originalCount + 1
+        table.insert(weaponParts, child.Name)
     end
 
-    debugPrint("Weapon " .. weaponName .. " has " .. originalCount .. " children")
-
-    if originalCount == 0 then
-        debugPrint("ERROR: Weapon has no children")
-        return skins
-    end
-
-    for _, case in ipairs(getSkinCases()) do
+    -- Search all cases for matching skins
+    for _, case in ipairs(getAllSkinCases()) do
         for _, skin in ipairs(case:GetChildren()) do
-            local skinChildren = skin:GetChildren()
-            local skinCount = #skinChildren
-
-            if skinCount == originalCount then
-                local matchCount = 0
-                for _, skinChild in ipairs(skinChildren) do
-                    for _, origName in ipairs(originalNames) do
-                        if skinChild.Name == origName then
-                            matchCount = matchCount + 1
+            local skinParts = skin:GetChildren()
+            if #skinParts == #weaponParts then
+                local match = true
+                for _, skinPart in ipairs(skinParts) do
+                    local found = false
+                    for _, weaponPart in ipairs(weaponParts) do
+                        if skinPart.Name == weaponPart then
+                            found = true
                             break
                         end
                     end
+                    if not found then
+                        match = false
+                        break
+                    end
                 end
-
-                if matchCount == originalCount then
+                if match then
                     table.insert(skins, skin.Name)
                 end
             end
         end
     end
 
-    debugPrint("Found " .. #skins .. " skins for " .. weaponName)
     table.sort(skins)
     return skins
 end
 
+-- Save original weapon state
 local function saveOriginal(weaponName)
+    if originalWeapons[weaponName] then return end
     local folder = getWeaponsFolder()
     if not folder then return end
+
     local weapon = folder:FindFirstChild(weaponName)
     if not weapon then return end
 
-    if not trueOriginals[weaponName] then
-        trueOriginals[weaponName] = {}
-        for _, child in pairs(weapon:GetChildren()) do
-            table.insert(trueOriginals[weaponName], child:Clone())
-        end
-        debugPrint("Saved original: " .. weaponName .. " (" .. #trueOriginals[weaponName] .. " parts)")
+    originalWeapons[weaponName] = {}
+    for _, child in ipairs(weapon:GetChildren()) do
+        table.insert(originalWeapons[weaponName], child:Clone())
     end
+    debugPrint("Saved original: " .. weaponName)
 end
 
-local function restoreOriginal(weaponName)
-    local folder = getWeaponsFolder()
-    if not folder then return end
-    local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then return end
-
-    if trueOriginals[weaponName] then
-        weapon:ClearAllChildren()
-        for _, child in pairs(trueOriginals[weaponName]) do
-            child.Parent = weapon
-        end
-        debugPrint("Restored: " .. weaponName)
-    end
-
-    appliedSkins[weaponName] = nil
-end
-
+-- Apply skin to weapon
 local function applySkin(weaponName, skinName)
-    debugPrint("=== APPLY SKIN ===")
-    debugPrint("Weapon: " .. weaponName)
-    debugPrint("Skin: " .. skinName)
+    debugPrint("Applying: " .. weaponName .. " -> " .. skinName)
 
     local folder = getWeaponsFolder()
     if not folder then
         debugPrint("ERROR: No weapons folder")
-        return
+        return false
     end
 
     local weapon = folder:FindFirstChild(weaponName)
     if not weapon then
         debugPrint("ERROR: Weapon not found: " .. weaponName)
-        return
+        return false
     end
 
+    -- Find skin model
     local skinModel = nil
-    for _, case in ipairs(getSkinCases()) do
+    for _, case in ipairs(getAllSkinCases()) do
         local found = case:FindFirstChild(skinName)
         if found then
             skinModel = found
-            debugPrint("Found skin in case: " .. case.Name)
             break
         end
     end
 
     if not skinModel then
         debugPrint("ERROR: Skin not found: " .. skinName)
-        return
+        return false
     end
 
+    -- Save original first
     saveOriginal(weaponName)
 
+    -- Clear and apply
     weapon:ClearAllChildren()
-    for _, child in pairs(skinModel:GetChildren()) do
+    for _, child in ipairs(skinModel:GetChildren()) do
         child:Clone().Parent = weapon
     end
 
-    appliedSkins[weaponName] = true
-    debugPrint("SUCCESS! Applied " .. skinName .. " to " .. weaponName)
+    currentSkins[weaponName] = skinName
+    debugPrint("SUCCESS!")
+    return true
 end
 
+-- Reset weapon to original
+local function resetWeapon(weaponName)
+    debugPrint("Resetting: " .. weaponName)
+
+    local folder = getWeaponsFolder()
+    if not folder then return end
+
+    local weapon = folder:FindFirstChild(weaponName)
+    if not weapon then return end
+
+    if originalWeapons[weaponName] then
+        weapon:ClearAllChildren()
+        for _, child in ipairs(originalWeapons[weaponName]) do
+            child.Parent = weapon
+        end
+        originalWeapons[weaponName] = nil
+        currentSkins[weaponName] = nil
+        debugPrint("Reset complete")
+    end
+end
+
+-- Refresh viewmodel by re-equipping
 local function refreshViewModel()
-    debugPrint("Refreshing viewmodel...")
-    local character = LocalPlayer.Character
-    if not character then
-        debugPrint("ERROR: No character")
-        return
-    end
+    local char = LocalPlayer.Character
+    if not char then return end
 
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then
-        debugPrint("ERROR: No humanoid")
-        return
-    end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
 
-    local equippedTool = nil
-    for _, child in ipairs(character:GetChildren()) do
+    -- Find equipped tool
+    local equipped = nil
+    for _, child in ipairs(char:GetChildren()) do
         if child:IsA("Tool") then
-            equippedTool = child
+            equipped = child
             break
         end
     end
 
+    -- Unequip and re-equip
     humanoid:UnequipTools()
     task.wait(0.1)
 
-    if equippedTool then
-        humanoid:EquipTool(equippedTool)
-        debugPrint("Re-equipped: " .. equippedTool.Name)
-    else
-        local backpack = LocalPlayer:FindFirstChild("Backpack")
-        if backpack then
-            for _, tool in ipairs(backpack:GetChildren()) do
-                if tool:IsA("Tool") then
-                    humanoid:EquipTool(tool)
-                    debugPrint("Equipped from backpack: " .. tool.Name)
-                    break
-                end
-            end
-        end
+    if equipped then
+        humanoid:EquipTool(equipped)
     end
 end
 
-local function saveSettings()
+-- Save/Load
+local function saveSkins()
     pcall(function()
-        if writefile then writefile(SKINS_FILE, HttpService:JSONEncode({selectedSkins = selectedSkins})) end
+        if writefile then
+            writefile(SKINS_FILE, HttpService:JSONEncode(currentSkins))
+        end
     end)
 end
 
-local function getWrapWeapons()
-    if #wrapWeapons > 0 then return wrapWeapons end
-    local folder = getWeaponsFolder()
-    if not folder then return wrapWeapons end
-    local skip = {["Unobtainable"] = true}
-    for _, child in ipairs(folder:GetChildren()) do
-        if not skip[child.Name] and child:IsA("Folder") then
-            table.insert(wrapWeapons, child.Name)
-        end
-    end
-    table.sort(wrapWeapons, function(a, b) return a:lower() < b:lower() end)
-    return wrapWeapons
-end
-
-local function getWrapList()
-    if #wrapList > 0 then return wrapList end
-    local ok, wraps = pcall(function() return LocalPlayer.PlayerScripts.Assets.WrapTextures:GetChildren() end)
-    if ok and wraps then
-        for _, wrap in ipairs(wraps) do
-            if wrap:IsA("Folder") or wrap:IsA("Model") then
-                table.insert(wrapList, wrap.Name)
-            end
-        end
-        table.sort(wrapList, function(a, b) return a:lower() < b:lower() end)
-    end
-    table.insert(wrapList, 1, "none")
-    return wrapList
-end
-
-local function applyWrap(weaponName, wrapName)
-    local folder = getWeaponsFolder()
-    if not folder then return end
-    local weapon = folder:FindFirstChild(weaponName)
-    if not weapon then return end
-
-    for _, desc in ipairs(weapon:GetDescendants()) do
-        if desc:IsA("BasePart") then
-            for _, child in ipairs(desc:GetChildren()) do
-                if child:IsA("Texture") then child:Destroy() end
-            end
-        end
-    end
-
-    if wrapName ~= "none" then
-        local ok, wrapFolder = pcall(function()
-            return LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
-        end)
-        if ok and wrapFolder then
-            for _, tex in ipairs(wrapFolder:GetChildren()) do
-                if tex:IsA("Texture") then
-                    for _, desc in ipairs(weapon:GetDescendants()) do
-                        if desc:IsA("BasePart") then
-                            tex:Clone().Parent = desc
-                        end
-                    end
-                end
-            end
-        end
-    end
-    wrapConfig[weaponName] = wrapName
-end
-
-local function saveWrapSettings()
+local function loadSkins()
     pcall(function()
-        if writefile then writefile(WRAPS_FILE, HttpService:JSONEncode(wrapConfig)) end
-    end)
-end
-
-local function loadWrapSettings()
-    pcall(function()
-        if isfile and isfile(WRAPS_FILE) then
-            local data = HttpService:JSONDecode(readfile(WRAPS_FILE))
+        if isfile and isfile(SKINS_FILE) then
+            local data = HttpService:JSONDecode(readfile(SKINS_FILE))
             if data then
-                wrapConfig = data
-                for weapon, wrap in pairs(wrapConfig) do
-                    applyWrap(weapon, wrap)
+                for weapon, skin in pairs(data) do
+                    applySkin(weapon, skin)
                 end
             end
         end
     end)
 end
+
+-- ============================================================
+-- GUI
+-- ============================================================
 
 function Skins.Update(_dt) end
 
@@ -345,105 +298,101 @@ function Skins.Init(deps)
     LocalPlayer = Utils.LocalPlayer
     HttpService = game:GetService("HttpService")
 
+    -- Build weapon list
+    local weaponList = {"None"}
+    local folder = getWeaponsFolder()
+    if folder then
+        for _, child in ipairs(folder:GetChildren()) do
+            if child:IsA("Folder") or child:IsA("Model") then
+                if child.Name ~= "Unobtainable" then
+                    table.insert(weaponList, child.Name)
+                end
+            end
+        end
+    end
+    table.sort(weaponList)
+
+    -- Init
     task.delay(0.5, function()
-        debugPrint("=== INIT ===")
         getWeaponsFolder()
-        getSkinCases()
-        loadWrapSettings()
+        getAllSkinCases()
+        -- Don't auto-load, let user pick
     end)
 
+    -- Register GUI
     local page = GUI.GetPage and GUI.GetPage("Skins")
     if page then
         GUI.AddSection(page, "Skin Changer", 1)
 
+        -- Weapon dropdown
         GUI.AddDropdown(page, "Weapon",
-            function() return WEAPON_LIST end,
-            function() return currentWeapon end,
+            function() return weaponList end,
+            function() return selectedWeapon end,
             function(v)
-                currentWeapon = v
-                debugPrint("Selected weapon: " .. v)
+                selectedWeapon = v
+                debugPrint("Weapon: " .. v)
                 if v ~= "None" then
-                    currentSkinList = findSkinsForWeapon(v)
-                    if #currentSkinList == 0 then
-                        currentSkinList = {"No skins found"}
-                        currentSkin = nil
-                    else
-                        currentSkin = nil
+                    skinOptions = getSkinsForWeapon(v)
+                    if #skinOptions == 0 then
+                        skinOptions = {"No skins found"}
                     end
+                    selectedSkin = "None"
                 else
-                    currentSkinList = {"Select a weapon first"}
-                    currentSkin = nil
+                    skinOptions = {"Select a weapon first"}
+                    selectedSkin = "None"
                 end
             end, 2)
 
+        -- Skin dropdown
         GUI.AddDropdown(page, "Skin",
-            function() return currentSkinList end,
-            function() return currentSkin end,
+            function() return skinOptions end,
+            function() return selectedSkin end,
             function(v)
-                currentSkin = v
-                debugPrint("Selected skin: " .. v)
-                if currentWeapon ~= "None" and v ~= "No skins found" then
-                    selectedSkins[currentWeapon] = v
-                    applySkin(currentWeapon, v)
-                    saveSettings()
+                selectedSkin = v
+                debugPrint("Skin: " .. v)
+                if selectedWeapon ~= "None" and v ~= "None" and v ~= "No skins found" then
+                    local success = applySkin(selectedWeapon, v)
+                    if success then
+                        saveSkins()
+                        task.spawn(function()
+                            refreshViewModel()
+                        end)
+                    end
+                end
+            end, 3)
+
+        -- Reset button
+        GUI.AddButton(page, "Reset Weapon",
+            function()
+                if selectedWeapon ~= "None" then
+                    resetWeapon(selectedWeapon)
+                    saveSkins()
                     task.spawn(function()
                         refreshViewModel()
                     end)
                 end
-            end, 3)
+            end, 4, true)
 
-        GUI.AddButton(page, "Reset Skins",
+        -- Reset all
+        GUI.AddButton(page, "Reset All Skins",
             function()
-                for weaponName, _ in pairs(appliedSkins) do restoreOriginal(weaponName) end
-                appliedSkins = {}
-                selectedSkins = {}
-                saveSettings()
+                for weapon, _ in pairs(currentSkins) do
+                    resetWeapon(weapon)
+                end
+                saveSkins()
                 task.spawn(function()
                     refreshViewModel()
                 end)
-            end, 4, true)
-
-        GUI.AddSection(page, "Wrap Changer", 5)
-
-        GUI.AddDropdown(page, "Weapon",
-            function()
-                local list = {"none"}
-                for _, w in ipairs(getWrapWeapons()) do table.insert(list, w) end
-                return list
-            end,
-            function() return currentWrapWeapon end,
-            function(v)
-                currentWrapWeapon = v
-                debugPrint("Wrap weapon: " .. v)
-            end, 6)
-
-        GUI.AddDropdown(page, "Wrap",
-            function() return getWrapList() end,
-            function() return currentWrap end,
-            function(v)
-                currentWrap = v
-                debugPrint("Wrap: " .. v)
-                if currentWrapWeapon ~= "none" then
-                    applyWrap(currentWrapWeapon, v)
-                    saveWrapSettings()
-                end
-            end, 7)
-
-        GUI.AddButton(page, "Clear All Wraps",
-            function()
-                for weaponName, _ in pairs(wrapConfig) do
-                    applyWrap(weaponName, "none")
-                end
-                wrapConfig = {}
-                saveWrapSettings()
-            end, 8, true)
+            end, 5, true)
     end
 
     print("[rivals] Skins module initialized.")
 end
 
 function Skins.Cleanup()
-    for weaponName, _ in pairs(appliedSkins) do restoreOriginal(weaponName) end
+    for weapon, _ in pairs(currentSkins) do
+        resetWeapon(weapon)
+    end
 end
 
 return Skins
