@@ -674,13 +674,22 @@ local function build()
     createTab("Settings", Icons.Settings, 5)
 
     UserInputService.InputBegan:Connect(function(input, gp)
-        if gp then return end
-        if input.KeyCode == Enum.KeyCode.RightControl then
-            if IsLoading then
-                print("[GUI] BLOCKED - Wait for GUI ready!")
-                return
+        local ok, err = pcall(function()
+            if gp then return end
+            if input.KeyCode == Enum.KeyCode.RightControl then
+                if IsLoading then
+                    print("[GUI] BLOCKED - Wait for GUI ready!")
+                    return
+                end
+                if not GUI.ToggleMenu then
+                    warn("[GUI] ToggleMenu not found!")
+                    return
+                end
+                GUI.ToggleMenu()
             end
-            GUI.ToggleMenu()
+        end)
+        if not ok then
+            warn("[GUI] Keybind error: " .. tostring(err))
         end
     end)
 
