@@ -190,11 +190,19 @@ function Components.Dropdown(page, label, options, default, callback, order)
     local expanded = false
     local currentValue = default
 
+    local function getOptions()
+        if type(options) == "function" then
+            return options()
+        end
+        return options
+    end
+
     local function rebuild()
         for _, child in ipairs(list:GetChildren()) do
             if child:IsA("TextButton") then child:Destroy() end
         end
-        for i, opt in ipairs(options) do
+        local opts = getOptions()
+        for i, opt in ipairs(opts) do
             local optBtn = Instance.new("TextButton")
             optBtn.Size = UDim2.new(1, 0, 0, 26)
             optBtn.BackgroundColor3 = Theme.Element
@@ -233,7 +241,8 @@ function Components.Dropdown(page, label, options, default, callback, order)
         if expanded then
             rebuild()
             list.Visible = true
-            tween(list, {Size = UDim2.new(0.55, 0, 0, math.min(#options * 28, 180))})
+            local opts = getOptions()
+            tween(list, {Size = UDim2.new(0.55, 0, 0, math.min(#opts * 28, 180))})
         else
             tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
             task.delay(0.15, function() list.Visible = false end)
