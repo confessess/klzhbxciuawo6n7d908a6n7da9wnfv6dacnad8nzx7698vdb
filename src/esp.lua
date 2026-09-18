@@ -15,7 +15,7 @@ local TweenService = game:GetService("TweenService")
 -- Settings
 Visuals.Settings = {
     -- Master
-    Enabled = true,
+    Enabled = false,
 
     -- ESP
     ESP = {
@@ -377,13 +377,9 @@ local function OnPlayerAdded(player)
         character:WaitForChild("HumanoidRootPart", 5)
         task.wait(0.3)
 
-        if Visuals.Settings.ESP.Enabled then
-            CreateESP(player, character)
-        end
-
-        if Visuals.Settings.Aura.Enabled then
-            CreateAura(player, character)
-        end
+        -- Always create ESP objects, visibility controlled by settings
+        CreateESP(player, character)
+        CreateAura(player, character)
     end)
 
     if player.Character then
@@ -391,13 +387,9 @@ local function OnPlayerAdded(player)
             player.Character:WaitForChild("Head", 5)
             task.wait(0.3)
 
-            if Visuals.Settings.ESP.Enabled then
-                CreateESP(player, player.Character)
-            end
-
-            if Visuals.Settings.Aura.Enabled then
-                CreateAura(player, player.Character)
-            end
+            -- Always create ESP objects, visibility controlled by settings
+            CreateESP(player, player.Character)
+            CreateAura(player, player.Character)
         end)
     end
 
@@ -439,64 +431,64 @@ end)
 
 -- ESP Update (called from main loop)
 function Visuals.Update()
-    local ok, err = pcall(function()
-        -- Update ESP objects
-        for character, data in pairs(ESPObjects) do
-            if not character or not character.Parent then
-                if data.billboard then data.billboard:Destroy() end
-                if data.highlight then data.highlight:Destroy() end
-                ESPObjects[character] = nil
-            elseif not Visuals.Settings.ESP.Enabled then
+    local S = Visuals.Settings
+
+    -- Update ESP objects
+    for character, data in pairs(ESPObjects) do
+        if not character or not character.Parent then
+            if data.billboard then data.billboard:Destroy() end
+            if data.highlight then data.highlight:Destroy() end
+            ESPObjects[character] = nil
+        elseif not S.ESP.Enabled then
+            if data.billboard then data.billboard.Enabled = false end
+            if data.highlight then data.highlight.Enabled = false end
+        else
+            local humanoid = data.humanoid
+            if not humanoid or humanoid.Health <= 0 then
                 if data.billboard then data.billboard.Enabled = false end
                 if data.highlight then data.highlight.Enabled = false end
             else
-                local humanoid = data.humanoid
-                if not humanoid or humanoid.Health <= 0 then
-                    if data.billboard then data.billboard.Enabled = false end
-                    if data.highlight then data.highlight.Enabled = false end
-                else
-                    local isTeammate = IsTeammate(data.player)
-                    local distance = 0
-                    local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if localRoot and character:FindFirstChild("HumanoidRootPart") then
-                        distance = (character.HumanoidRootPart.Position - localRoot.Position).Magnitude
-                    end
-                    local visible = not isTeammate and distance <= Visuals.Settings.ESP.MaxDistance
+                local isTeammate = IsTeammate(data.player)
+                local distance = 0
+                local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if localRoot and character:FindFirstChild("HumanoidRootPart") then
+                    distance = (character.HumanoidRootPart.Position - localRoot.Position).Magnitude
+                end
+                local visible = not isTeammate and distance <= S.ESP.MaxDistance
 
-                    if data.billboard then
-                        data.billboard.Enabled = visible
-                        data.billboard.MaxDistance = Visuals.Settings.ESP.MaxDistance
-                    end
-                    if data.highlight then
-                        data.highlight.Enabled = visible and Visuals.Settings.ESP.Chams
-                    end
+                if data.billboard then
+                    data.billboard.Enabled = visible
+                    data.billboard.MaxDistance = S.ESP.MaxDistance
+                end
+                if data.highlight then
+                    data.highlight.Enabled = visible and S.ESP.Chams
+                    data.highlight.FillColor = S.ESP.ChamsFillColor
+                    data.highlight.OutlineColor = S.ESP.ChamsOutlineColor
+                end
 
-                    if visible then
-                        if data.nameLabel then
-                            data.nameLabel.Visible = Visuals.Settings.ESP.Names
-                        end
-                        if data.healthBg then
-                            data.healthBg.Visible = Visuals.Settings.ESP.Health
-                            local pct = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
-                            data.healthFill.Size = UDim2.new(pct, 0, 1, 0)
-                        end
-                        if data.distLabel then
-                            data.distLabel.Visible = Visuals.Settings.ESP.Distance
-                            data.distLabel.Text = string.format("%.0f studs", distance)
-                        end
+                if visible then
+                    if data.nameLabel then
+                        data.nameLabel.Visible = S.ESP.Names
+                    end
+                    if data.healthBg then
+                        data.healthBg.Visible = S.ESP.Health
+                        local pct = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
+                        data.healthFill.Size = UDim2.new(pct, 0, 1, 0)
+                    end
+                    if data.distLabel then
+                        data.distLabel.Visible = S.ESP.Distance
+                        data.distLabel.Text = string.format("%.0f studs", distance)
                     end
                 end
             end
         end
-
-        UpdateAuras()
-        ApplyArmChams()
-        UpdateScreenFX()
-        UpdateWeather()
-    end)
-    if not ok then
-        warn("[Visuals] Update error: " .. tostring(err))
     end
+
+    -- Update other features
+    UpdateAuras()
+    ApplyArmChams()
+    UpdateScreenFX()
+    UpdateWeather()
 end
 
 -- Update loop
