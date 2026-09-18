@@ -761,6 +761,27 @@ function GUI.Init(deps)
         warn("[GUI] Error: " .. tostring(err))
     end
 
+    -- Register Settings tab controls
+    local settings = GUI.GetPage("Settings")
+    if settings then
+        local C = GUI.Components
+
+        C.Section(settings, "Menu", 1)
+        C.Keybind(settings, "Menu Keybind", Enum.KeyCode.RightControl, function(k)
+            -- keybind updated
+        end, 2)
+
+        C.Section(settings, "Config", 10)
+        C.Button(settings, "Reset Config", function()
+            if Config and Config.Reset then Config.Reset() end
+        end, 11, false)
+        C.Button(settings, "Unload Script", function()
+            if Core and Core.Unload then Core.Unload() end
+        end, 12, true)
+
+        print("[GUI] Settings tab registered")
+    end
+
     -- Mark GUI as loading, disable interaction briefly
     IsLoading = true
     if MainFrame then
