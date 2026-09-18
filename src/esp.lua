@@ -504,6 +504,84 @@ RunService.RenderStepped:Connect(function()
     Visuals.Update()
 end)
 
+-- ============================================================
+-- GUI Registration & Init
+-- ============================================================
+
+local GUI, Core
+
+function Visuals.Init(deps)
+    GUI = deps.GUI
+    Core = deps.Core
+
+    if not GUI then 
+        print("[Visuals] No GUI module")
+        return 
+    end
+
+    local page = GUI.GetPage and GUI.GetPage("Visuals")
+    if not page then 
+        print("[Visuals] No Visuals page")
+        return 
+    end
+
+    local C = GUI.Components
+    local S = Visuals.Settings
+
+    -- ESP Section
+    C.Section(page, "ESP", 1)
+    C.Toggle(page, "Enabled", false, function(v) S.ESP.Enabled = v end, 2)
+    C.Toggle(page, "Chams", true, function(v) S.ESP.Chams = v end, 3)
+    C.Toggle(page, "Names", true, function(v) S.ESP.Names = v end, 4)
+    C.Toggle(page, "Health", true, function(v) S.ESP.Health = v end, 5)
+    C.Toggle(page, "Distance", true, function(v) S.ESP.Distance = v end, 6)
+    C.Toggle(page, "Team Check", true, function(v) S.ESP.TeamCheck = v end, 7)
+    C.Slider(page, "Max Distance", 100, 2000, 500, function(v) S.ESP.MaxDistance = v end, 8)
+
+    -- Player Aura Section
+    C.Section(page, "Player Aura", 10)
+    C.Toggle(page, "Enabled", false, function(v) S.Aura.Enabled = v end, 11)
+    C.Slider(page, "Size", 1, 20, 5, function(v) S.Aura.Size = v end, 12)
+    C.Slider(page, "Speed", 1, 10, 2, function(v) S.Aura.Speed = v end, 13)
+
+    -- Arm Chams Section
+    C.Section(page, "Arm Chams", 20)
+    C.Toggle(page, "Enabled", false, function(v) S.ArmChams.Enabled = v end, 21)
+
+    -- Screen FX Section
+    C.Section(page, "Screen FX", 30)
+    C.Toggle(page, "Enabled", false, function(v) S.ScreenFX.Enabled = v end, 31)
+    C.Toggle(page, "Vignette", true, function(v) S.ScreenFX.Vignette = v end, 32)
+    C.Toggle(page, "Color Correction", true, function(v) S.ScreenFX.ColorCorrection = v end, 33)
+    C.Toggle(page, "Bloom", true, function(v) S.ScreenFX.Bloom = v end, 34)
+
+    -- Weather Section
+    C.Section(page, "Weather", 40)
+    C.Toggle(page, "Enabled", false, function(v) S.Weather.Enabled = v end, 41)
+    C.Dropdown(page, "Type", {"Rain", "Snow", "Storm"}, "Rain", function(v) S.Weather.Type = v end, 42)
+    C.Slider(page, "Intensity", 10, 200, 50, function(v) S.Weather.Intensity = v end, 43)
+
+    print("[Visuals] GUI registered")
+end
+
+function Visuals.Cleanup()
+    for character, data in pairs(ESPObjects) do
+        if data.billboard then data.billboard:Destroy() end
+        if data.highlight then data.highlight:Destroy() end
+    end
+    table.clear(ESPObjects)
+
+    for character, data in pairs(AuraObjects) do
+        if data.aura then data.aura:Destroy() end
+    end
+    table.clear(AuraObjects)
+
+    if ScreenFXObjects.vignette then ScreenFXObjects.vignette:Destroy() end
+    if ScreenFXObjects.colorCorrection then ScreenFXObjects.colorCorrection:Destroy() end
+    if ScreenFXObjects.bloom then ScreenFXObjects.bloom:Destroy() end
+    if WeatherObjects.folder then WeatherObjects.folder:Destroy() end
+end
+
 print("[Visuals] Module loaded - MAXIMUM COOL")
 
 return Visuals
