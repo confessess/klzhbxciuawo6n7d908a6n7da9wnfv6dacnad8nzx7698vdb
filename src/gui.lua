@@ -1,5 +1,5 @@
 -- ============================================================
--- RIVALS GUI - Minimal working version
+-- RIVALS GUI - Complete working version
 -- ============================================================
 
 local TweenService = game:GetService("TweenService")
@@ -366,6 +366,60 @@ function Components.Button(page, label, callback, order, isDanger)
     return btn
 end
 
+function Components.Keybind(page, label, default, callback, order)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 32)
+    frame.BackgroundTransparency = 1
+    frame.LayoutOrder = order or 0
+    frame.Parent = page
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -80, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = label
+    lbl.TextColor3 = Theme.Text
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+
+    local keyBtn = Instance.new("TextButton")
+    keyBtn.Size = UDim2.fromOffset(70, 24)
+    keyBtn.Position = UDim2.new(1, -70, 0.5, -12)
+    keyBtn.BackgroundColor3 = Theme.Element
+    keyBtn.BorderSizePixel = 0
+    keyBtn.Text = default and tostring(default):gsub("Enum.KeyCode.", "") or "..."
+    keyBtn.TextColor3 = Theme.Blue
+    keyBtn.Font = Enum.Font.GothamBold
+    keyBtn.TextSize = 11
+    keyBtn.AutoButtonColor = false
+    keyBtn.Parent = frame
+    corner(keyBtn, 4)
+    stroke(keyBtn)
+
+    local listening = false
+    local current = default
+
+    keyBtn.MouseButton1Click:Connect(function()
+        if listening then return end
+        listening = true
+        keyBtn.Text = "..."
+
+        local conn
+        conn = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                current = input.KeyCode
+                keyBtn.Text = tostring(input.KeyCode):gsub("Enum.KeyCode.", "")
+                listening = false
+                if callback then pcall(callback, input.KeyCode) end
+                conn:Disconnect()
+            end
+        end)
+    end)
+
+    return {Set = function(k) current = k keyBtn.Text = tostring(k):gsub("Enum.KeyCode.", "") end, Get = function() return current end}
+end
+
 GUI.Components = Components
 
 -- Tab system
@@ -388,6 +442,10 @@ local function switchTab(name)
                 tween(glow, {BackgroundTransparency = isActive and 0.3 or 1})
             end
         end
+    end
+    -- Update preview visibility
+    if GUI.UpdatePreviewVisibility then
+        GUI.UpdatePreviewVisibility()
     end
 end
 
@@ -471,9 +529,6 @@ local function updatePreviewPositions()
             SkinPreviewWindow.Position = UDim2.new(0, pos.X + size.X + 5, 0, pos.Y)
         end
     end)
-    if not ok then
-        warn("[GUI] UpdatePreviewPositions error: " .. tostring(err))
-    end
 end
 
 GUI.UpdatePreviewVisibility = function()
@@ -486,9 +541,6 @@ GUI.UpdatePreviewVisibility = function()
         end
         updatePreviewPositions()
     end)
-    if not ok then
-        warn("[GUI] UpdatePreviewVisibility error: " .. tostring(err))
-    end
 end
 
 local function createPreviewWindows()
@@ -501,7 +553,6 @@ local function createPreviewWindows()
     PreviewGui.DisplayOrder = 998
     PreviewGui.Parent = playerGui
 
-    -- ESP Preview (left, full height)
     ESPPreviewWindow = Instance.new("Frame")
     ESPPreviewWindow.Size = UDim2.fromOffset(220, 520)
     ESPPreviewWindow.BackgroundColor3 = Theme.Darker
@@ -537,7 +588,6 @@ local function createPreviewWindows()
     espLight.Range = 25
     espLight.Parent = espViewport
 
-    -- Skin Preview (right, smaller)
     SkinPreviewWindow = Instance.new("Frame")
     SkinPreviewWindow.Size = UDim2.fromOffset(200, 280)
     SkinPreviewWindow.BackgroundColor3 = Theme.Darker
@@ -677,62 +727,24 @@ local function build()
         local ok, err = pcall(function()
             if gp then return end
             if input.KeyCode == Enum.KeyCode.RightControl then
-                if IsLoading then
-                    print("[GUI] BLOCKED - Wait for GUI ready!")
-                    return
-                end
-                if not GUI.ToggleMenu then
-                    warn("[GUI] ToggleMenu not found!")
-                    return
-                end
+                if IsLoading then return end
                 GUI.ToggleMenu()
             end
         end)
-        if not ok then
-            warn("[GUI] Keybind error: " .. tostring(err))
-        end
     end)
 
     switchTab("Combat")
 end
 
 function GUI.ToggleMenu()
-    if IsLoading then 
-        print("[GUI] Still loading, please wait...")
-        return 
-    end
-
-    -- Step 1: flip state
+    if IsLoading then return end
     IsOpen = not IsOpen
-    print("[GUI] ToggleMenu called, IsOpen = " .. tostring(IsOpen))
-
-    -- Step 2: update previews (wrapped)
-    local ok1, err1 = pcall(function()
-        if GUI.UpdatePreviewVisibility then
-            GUI.UpdatePreviewVisibility()
-        end
-    end)
-    if not ok1 then
-        warn("[GUI] Preview visibility error: " .. tostring(err1))
+    if GUI.UpdatePreviewVisibility then
+        GUI.UpdatePreviewVisibility()
     end
-
-    -- Step 3: show/hide main frame (wrapped)
-    local ok2, err2 = pcall(function()
-        if not MainFrame then
-            warn("[GUI] MainFrame is nil!")
-            return
-        end
-        if IsOpen then
-            MainFrame.Visible = true
-        else
-            MainFrame.Visible = false
-        end
-    end)
-    if not ok2 then
-        warn("[GUI] MainFrame visibility error: " .. tostring(err2))
+    if MainFrame then
+        MainFrame.Visible = IsOpen
     end
-
-    print("[GUI] Toggle complete")
 end
 
 function GUI.IsOpen()
@@ -761,14 +773,14 @@ function GUI.Init(deps)
         warn("[GUI] Error: " .. tostring(err))
     end
 
-    -- Register Settings tab controls
+    -- Register Settings tab
     local settings = GUI.GetPage("Settings")
     if settings then
         local C = GUI.Components
 
         C.Section(settings, "Menu", 1)
         C.Keybind(settings, "Menu Keybind", Enum.KeyCode.RightControl, function(k)
-            -- keybind updated
+            print("[GUI] Keybind changed")
         end, 2)
 
         C.Section(settings, "Config", 10)
@@ -778,24 +790,16 @@ function GUI.Init(deps)
         C.Button(settings, "Unload Script", function()
             if Core and Core.Unload then Core.Unload() end
         end, 12, true)
-
-        print("[GUI] Settings tab registered")
     end
 
-    -- Mark GUI as loading, disable interaction briefly
     IsLoading = true
-    if MainFrame then
-        MainFrame.Active = false
-    end
+    if MainFrame then MainFrame.Active = false end
 
-    -- Re-enable after modules load
     task.delay(3, function()
         IsLoading = false
-        if MainFrame then
-            MainFrame.Active = true
-        end
+        if MainFrame then MainFrame.Active = true end
         print("================================")
-        print("[rivals] GUI READY - You can now press RightCtrl")
+        print("[rivals] GUI READY")
         print("================================")
     end)
 
