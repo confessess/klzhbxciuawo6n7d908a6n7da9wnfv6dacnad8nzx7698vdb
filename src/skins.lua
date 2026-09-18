@@ -390,11 +390,22 @@ local function getWrapWeapons()
     return list
 end
 
-local function applyWrapToModel(targetWeapon, wrapName)
-    if not targetWeapon then return 0 end
-
+local function applyWrapToModel(targetWeapon, wrapNameToApply)
+    if not targetWeapon then 
+        debugPrint("No target weapon")
+        return 0 
+    end
+    
+    -- find the weapon's ItemVisual (actual gun parts, not arms)
+    local itemVisual = targetWeapon:FindFirstChild("ItemVisual")
+    if not itemVisual then
+        debugPrint("No ItemVisual found in " .. targetWeapon.Name)
+        return 0
+    end
+    
+    -- find invisible parts
     local invisParts = {}
-    for _, desc in ipairs(targetWeapon:GetDescendants()) do
+    for _, desc in ipairs(itemVisual:GetDescendants()) do
         if desc:IsA("BasePart") and desc.Transparency == 1 then
             table.insert(invisParts, desc)
         end
@@ -407,23 +418,47 @@ local function applyWrapToModel(targetWeapon, wrapName)
         return false
     end
 
-    for _, desc in ipairs(targetWeapon:GetDescendants()) do
+    -- clear old textures from weapon only
+    local cleared = 0
+    for _, desc in ipairs(itemVisual:GetDescendants()) do
         if desc:IsA("BasePart") then
             for _, child in ipairs(desc:GetChildren()) do
                 if child:IsA("Texture") then 
-                    child:Destroy() 
+                    child:Destroy()
+                    cleared = cleared + 1
                 end
             end
         end
     end
+    debugPrint("Cleared " .. cleared .. " old textures")
 
+    -- apply new wrap to weapon only
     local applied = 0
-    if wrapName ~= "None" and wrapName ~= "none" then
-        local wrapFolder = LocalPlayer.PlayerScripts.Assets.WrapTextures:FindFirstChild(wrapName)
+    if wrapNameToApply ~= "None" and wrapNameToApply ~= "none" then
+        -- try multiple paths to find wrap
+        local wrapFolder = nil
+        local paths = {
+            LocalPlayer.PlayerScripts.Assets.WrapTextures,
+            LocalPlayer.PlayerScripts.Assets:FindFirstChild("WrapTextures"),
+            game:GetService("ReplicatedStorage"):FindFirstChild("WrapTextures"),
+        }
+        
+        for _, path in ipairs(paths) do
+            if path then
+                wrapFolder = path:FindFirstChild(wrapNameToApply)
+                if wrapFolder then
+                    debugPrint("Found wrap at path")
+                    break
+                end
+            end
+        end
+        
         if wrapFolder then
+            local texCount = 0
             for _, tex in ipairs(wrapFolder:GetChildren()) do
                 if tex:IsA("Texture") then
-                    for _, desc in ipairs(targetWeapon:GetDescendants()) do
+                    texCount = texCount + 1
+                    for _, desc in ipairs(itemVisual:GetDescendants()) do
                         if desc:IsA("BasePart") and not isInvisible(desc) then
                             local clone = tex:Clone()
                             clone.Parent = desc
@@ -432,6 +467,9 @@ local function applyWrapToModel(targetWeapon, wrapName)
                     end
                 end
             end
+            debugPrint("Wrap has " .. texCount .. " textures, applied " .. applied)
+        else
+            debugPrint("Wrap not found: " .. tostring(wrapNameToApply))
         end
     end
     return applied
