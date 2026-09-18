@@ -511,6 +511,7 @@ end)
 local GUI, Core
 
 function Visuals.Init(deps)
+    print("[Visuals] Init called")
     GUI = deps.GUI
     Core = deps.Core
 
@@ -518,15 +519,19 @@ function Visuals.Init(deps)
         print("[Visuals] No GUI module")
         return 
     end
+    print("[Visuals] GUI module found")
 
     local page = GUI.GetPage and GUI.GetPage("Visuals")
     if not page then 
-        print("[Visuals] No Visuals page")
+        print("[Visuals] No Visuals page found!")
+        print("[Visuals] Available pages:", GUI.Pages and "exists" or "nil")
         return 
     end
+    print("[Visuals] Visuals page found")
 
     local C = GUI.Components
     local S = Visuals.Settings
+    print("[Visuals] Got components, registering controls...")
 
     -- ESP Section
     C.Section(page, "ESP", 1)
