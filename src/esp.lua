@@ -749,9 +749,17 @@ function Visuals.Update()
                     data.billboard.MaxDistance = S.ESP.MaxDistance
                 end
                 if data.highlight then
-                    data.highlight.Enabled = visible and S.ESP.Chams
-                    data.highlight.FillColor = S.ESP.ChamsFillColor
-                    data.highlight.OutlineColor = S.ESP.ChamsOutlineColor
+                    data.highlight.Enabled = visible and (S.ESP.Chams or S.ChamsStyle.Enabled)
+
+                    -- Apply custom chams if enabled
+                    if S.ChamsStyle.Enabled then
+                        ApplyCustomChams(character, data)
+                    else
+                        data.highlight.FillColor = S.ESP.ChamsFillColor
+                        data.highlight.OutlineColor = S.ESP.ChamsOutlineColor
+                        data.highlight.FillTransparency = 0.5
+                        data.highlight.OutlineTransparency = 0
+                    end
                 end
 
                 if visible then
@@ -761,7 +769,7 @@ function Visuals.Update()
                     end
 
                     -- Health bar (vertical, left side)
-                    if data.healthBg then
+                    if data.healthBg and data.healthFill then
                         data.healthBg.Visible = S.ESP.Health
                         local pct = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
                         data.healthFill.Size = UDim2.new(1, 0, pct, 0)
@@ -789,7 +797,6 @@ function Visuals.Update()
     -- Update other features
     UpdateAuras()
     ApplyArmChams()
-    UpdateScreenFX()
     UpdateWeather()
 end
 
@@ -828,64 +835,74 @@ function Visuals.Init(deps)
     local S = Visuals.Settings
     print("[Visuals] Got components, registering controls...")
 
-    -- ESP Section
-    C.Section(page, "ESP", 1)
-    C.Toggle(page, "Enabled", S.ESP.Enabled, function(v) 
+    -- ESP Section (Collapsible)
+    local espSection, setEspOpen = C.CollapsibleSection(page, "ESP", 1, S.ESP.Enabled)
+    C.Toggle(espSection, "Enabled", S.ESP.Enabled, function(v) 
         S.ESP.Enabled = v 
         SetConfig("ESP_Enabled", v)
+        setEspOpen(v)
     end, 2)
-    C.Toggle(page, "Chams", S.ESP.Chams, function(v)
+    C.Toggle(espSection, "Chams", S.ESP.Chams, function(v)
         S.ESP.Chams = v
         SetConfig("ESP_Highlight", v)
     end, 3)
-    C.Toggle(page, "Names", S.ESP.Names, function(v)
+    C.Toggle(espSection, "Names", S.ESP.Names, function(v)
         S.ESP.Names = v
         SetConfig("ESP_Name", v)
     end, 4)
-    C.Toggle(page, "Health", S.ESP.Health, function(v)
+    C.Toggle(espSection, "Health", S.ESP.Health, function(v)
         S.ESP.Health = v
         SetConfig("ESP_HealthBar", v)
     end, 5)
-    C.Toggle(page, "Distance", S.ESP.Distance, function(v)
+    C.Toggle(espSection, "Distance", S.ESP.Distance, function(v)
         S.ESP.Distance = v
         SetConfig("ESP_Studs", v)
     end, 6)
-    C.Toggle(page, "Team Check", S.ESP.TeamCheck, function(v)
+    C.Toggle(espSection, "Team Check", S.ESP.TeamCheck, function(v)
         S.ESP.TeamCheck = v
         SetConfig("ESP_TeamCheck", v)
     end, 7)
-    C.Slider(page, "Max Distance", 100, 2000, S.ESP.MaxDistance, function(v) 
+    C.Slider(espSection, "Max Distance", 100, 2000, S.ESP.MaxDistance, function(v) 
         S.ESP.MaxDistance = v
         SetConfig("ESP_MaxDistance", v)
     end, 8)
 
-    -- Player Aura Section (High-Tech)
-    C.Section(page, "Player Aura", 10)
-    C.Toggle(page, "Enabled", S.Aura.Enabled, function(v) S.Aura.Enabled = v end, 11)
-    C.Dropdown(page, "Aura Type", {"Glow", "Hexagon", "DataStream", "EnergyPulse", "Hologram", "ScanLines"}, S.Aura.Type, function(v) S.Aura.Type = v end, 12)
-    C.Slider(page, "Size", 1, 20, S.Aura.Size, function(v) S.Aura.Size = v end, 13)
-    C.Slider(page, "Speed", 1, 10, S.Aura.Speed, function(v) S.Aura.Speed = v end, 14)
-    C.Slider(page, "Intensity", 10, 200, S.Aura.Intensity, function(v) S.Aura.Intensity = v end, 15)
+    -- Player Aura Section (Collapsible)
+    local auraSection, setAuraOpen = C.CollapsibleSection(page, "Player Aura", 10, S.Aura.Enabled)
+    C.Toggle(auraSection, "Enabled", S.Aura.Enabled, function(v) 
+        S.Aura.Enabled = v
+        setAuraOpen(v)
+    end, 11)
+    C.Dropdown(auraSection, "Aura Type", {"Glow", "Hexagon", "DataStream", "EnergyPulse", "Hologram", "ScanLines"}, S.Aura.Type, function(v) S.Aura.Type = v end, 12)
+    C.Slider(auraSection, "Size", 1, 20, S.Aura.Size, function(v) S.Aura.Size = v end, 13)
+    C.Slider(auraSection, "Speed", 1, 10, S.Aura.Speed, function(v) S.Aura.Speed = v end, 14)
+    C.Slider(auraSection, "Intensity", 10, 200, S.Aura.Intensity, function(v) S.Aura.Intensity = v end, 15)
 
-    -- Custom Chams Section
-    C.Section(page, "Custom Chams", 20)
-    C.Toggle(page, "Enabled", S.ChamsStyle.Enabled, function(v) S.ChamsStyle.Enabled = v end, 21)
-    C.Dropdown(page, "Style", {"Hologram", "Neon", "Ghost", "Cyber"}, S.ChamsStyle.Style, function(v) S.ChamsStyle.Style = v end, 22)
-    C.Slider(page, "Glow Intensity", 0, 10, S.ChamsStyle.GlowIntensity, function(v) S.ChamsStyle.GlowIntensity = v end, 23)
-    C.Slider(page, "Scan Speed", 0, 10, S.ChamsStyle.ScanSpeed, function(v) S.ChamsStyle.ScanSpeed = v end, 24)
+    -- Custom Chams Section (Collapsible)
+    local chamsSection, setChamsOpen = C.CollapsibleSection(page, "Custom Chams", 20, S.ChamsStyle.Enabled)
+    C.Toggle(chamsSection, "Enabled", S.ChamsStyle.Enabled, function(v) 
+        S.ChamsStyle.Enabled = v
+        setChamsOpen(v)
+    end, 21)
+    C.Dropdown(chamsSection, "Style", {"Hologram", "Neon", "Ghost", "Cyber"}, S.ChamsStyle.Style, function(v) S.ChamsStyle.Style = v end, 22)
+    C.Slider(chamsSection, "Glow Intensity", 0, 10, S.ChamsStyle.GlowIntensity, function(v) S.ChamsStyle.GlowIntensity = v end, 23)
+    C.Slider(chamsSection, "Scan Speed", 0, 10, S.ChamsStyle.ScanSpeed, function(v) S.ChamsStyle.ScanSpeed = v end, 24)
 
-    -- Arm Chams Section
-    C.Section(page, "Arm Chams", 30)
-    C.Toggle(page, "Enabled", S.ArmChams.Enabled, function(v) S.ArmChams.Enabled = v end, 31)
+    -- Arm Chams Section (Collapsible)
+    local armSection, setArmOpen = C.CollapsibleSection(page, "Arm Chams", 30, S.ArmChams.Enabled)
+    C.Toggle(armSection, "Enabled", S.ArmChams.Enabled, function(v) 
+        S.ArmChams.Enabled = v
+        setArmOpen(v)
+    end, 31)
 
-    -- Weather Section
-    C.Section(page, "Weather", 40)
-    C.Toggle(page, "Enabled", false, function(v) S.Weather.Enabled = v end, 41)
-    C.Dropdown(page, "Type", {"Rain", "Snow", "Storm"}, "Rain", function(v) S.Weather.Type = v end, 42)
-    C.Slider(page, "Intensity", 10, 200, 50, function(v) S.Weather.Intensity = v end, 43)
-
-    print("[Visuals] GUI registered")
-end
+    -- Weather Section (Collapsible)
+    local weatherSection, setWeatherOpen = C.CollapsibleSection(page, "Weather", 40, S.Weather.Enabled)
+    C.Toggle(weatherSection, "Enabled", S.Weather.Enabled, function(v) 
+        S.Weather.Enabled = v
+        setWeatherOpen(v)
+    end, 41)
+    C.Dropdown(weatherSection, "Type", {"Rain", "Snow", "Storm"}, S.Weather.Type, function(v) S.Weather.Type = v end, 42)
+    C.Slider(weatherSection, "Intensity", 10, 200, S.Weather.Intensity, function(v) S.Weather.Intensity = v end, 43)
 
 function Visuals.Cleanup()
     for character, data in pairs(ESPObjects) do

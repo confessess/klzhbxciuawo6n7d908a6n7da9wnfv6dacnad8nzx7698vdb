@@ -421,6 +421,103 @@ function Components.Keybind(page, label, default, callback, order)
     return {Set = function(k) current = k keyBtn.Text = tostring(k):gsub("Enum.KeyCode.", "") end, Get = function() return current end}
 end
 
+function Components.CollapsibleSection(page, text, order, defaultOpen)
+    local sectionFrame = Instance.new("Frame")
+    sectionFrame.Size = UDim2.new(1, 0, 0, 28)
+    sectionFrame.BackgroundTransparency = 1
+    sectionFrame.LayoutOrder = order or 0
+    sectionFrame.ClipsDescendants = false
+    sectionFrame.Parent = page
+
+    -- Header button
+    local header = Instance.new("TextButton")
+    header.Size = UDim2.new(1, 0, 0, 28)
+    header.BackgroundColor3 = Theme.Element
+    header.BorderSizePixel = 0
+    header.Text = ""
+    header.AutoButtonColor = false
+    header.Parent = sectionFrame
+    corner(header, 4)
+
+    -- Header label
+    local headerLbl = Instance.new("TextLabel")
+    headerLbl.Size = UDim2.new(1, -40, 1, 0)
+    headerLbl.Position = UDim2.new(0, 12, 0, 0)
+    headerLbl.BackgroundTransparency = 1
+    headerLbl.Text = string.upper(text)
+    headerLbl.TextColor3 = Color3.fromRGB(100, 180, 255)
+    headerLbl.Font = Enum.Font.GothamBold
+    headerLbl.TextSize = 12
+    headerLbl.TextXAlignment = Enum.TextXAlignment.Left
+    headerLbl.Parent = header
+
+    -- Arrow indicator
+    local arrow = Instance.new("TextLabel")
+    arrow.Size = UDim2.fromOffset(20, 20)
+    arrow.Position = UDim2.new(1, -28, 0.5, -10)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = defaultOpen and "▼" or "▶"
+    arrow.TextColor3 = Color3.fromRGB(100, 180, 255)
+    arrow.Font = Enum.Font.GothamBold
+    arrow.TextSize = 10
+    arrow.Parent = header
+
+    -- Content container
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.BackgroundTransparency = 1
+    content.ClipsDescendants = true
+    content.Visible = defaultOpen or false
+    content.Parent = sectionFrame
+
+    local contentLayout = Instance.new("UIListLayout")
+    contentLayout.Padding = UDim.new(0, 4)
+    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    contentLayout.Parent = content
+
+    -- State
+    local isOpen = defaultOpen or false
+    local contentHeight = 0
+
+    -- Update content height
+    contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        contentHeight = contentLayout.AbsoluteContentSize.Y
+        if isOpen then
+            content.Size = UDim2.new(1, 0, 0, contentHeight)
+            sectionFrame.Size = UDim2.new(1, 0, 0, 28 + contentHeight + 4)
+        end
+    end)
+
+    -- Toggle function
+    local function setOpen(open)
+        isOpen = open
+
+        if isOpen then
+            arrow.Text = "▼"
+            content.Visible = true
+            content.Size = UDim2.new(1, 0, 0, contentHeight)
+            sectionFrame.Size = UDim2.new(1, 0, 0, 28 + contentHeight + 4)
+        else
+            arrow.Text = "▶"
+            content.Size = UDim2.new(1, 0, 0, 0)
+            sectionFrame.Size = UDim2.new(1, 0, 0, 28)
+            task.delay(0.15, function()
+                if not isOpen then
+                    content.Visible = false
+                end
+            end)
+        end
+    end
+
+    -- Toggle on header click
+    header.MouseButton1Click:Connect(function()
+        setOpen(not isOpen)
+    end)
+
+    -- Return content frame AND control function
+    return content, setOpen
+end
+
 GUI.Components = Components
 
 -- Tab system
