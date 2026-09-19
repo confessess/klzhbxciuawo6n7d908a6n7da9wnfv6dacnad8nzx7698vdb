@@ -1,6 +1,7 @@
 -- ============================================================
 -- Rivals Modular -- Teleport
 -- Teleport behind enemy
+-- Master Section UI: Header toggles its own module
 -- ============================================================
 
 local Teleport = {}
@@ -64,13 +65,21 @@ function Teleport.Init(deps)
     Players     = Utils.Players
     LocalPlayer = Utils.LocalPlayer
 
-    -- Register GUI (Misc tab)
+    -- Register GUI (Misc tab) with Master Section
     local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.Components.Section(page, "Teleport", 20)
-        GUI.Components.Toggle(page, "TP Behind Enemy", Config.Get("TPBehind_Enabled"), function(v) Config.Set("TPBehind_Enabled", v) end, 21)
-        GUI.Components.Slider(page, "Distance Behind", 1, 10, Config.Get("TPBehind_Distance"), function(v) Config.Set("TPBehind_Distance", v) end, 22)
-        GUI.Components.Slider(page, "Max Distance", 100, 5000, Config.Get("TPBehind_MaxDist"), function(v) Config.Set("TPBehind_MaxDist", v) end, 23)
+        local C = GUI.Components
+
+        -- ========================================
+        -- TP BEHIND ENEMY MASTER SECTION
+        -- ========================================
+        local tpSection, setTpOpen = C.MasterSection(page, "TP Behind Enemy", 80, Config.Get("TPBehind_Enabled") or false)
+
+        C.Toggle(tpSection, "Enabled", Config.Get("TPBehind_Enabled"), function(v) Config.Set("TPBehind_Enabled", v) end, 81)
+        C.Slider(tpSection, "Distance Behind", 1, 10, Config.Get("TPBehind_Distance"), function(v) Config.Set("TPBehind_Distance", v) end, 82)
+        C.Slider(tpSection, "Max Distance", 100, 5000, Config.Get("TPBehind_MaxDist"), function(v) Config.Set("TPBehind_MaxDist", v) end, 83)
+
+        setTpOpen(Config.Get("TPBehind_Enabled") or false)
     end
 
     print("[rivals] Teleport module initialized.")

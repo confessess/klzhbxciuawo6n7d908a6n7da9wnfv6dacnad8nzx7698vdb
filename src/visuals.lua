@@ -1,6 +1,7 @@
 -- ============================================================
 -- RIVALS VISUALS - MAXIMUM COOL
 -- Custom weather, player auras, screen FX, arm chams, ESP
+-- Master Section UI: Each header toggles its own module
 -- ============================================================
 
 local Visuals = {}
@@ -35,25 +36,25 @@ Visuals.Settings = {
 
     -- ESP
     ESP = {
-        Enabled = GetConfig("ESP_Enabled", false),
-        TeamCheck = GetConfig("ESP_TeamCheck", true),
-        MaxDistance = GetConfig("ESP_MaxDistance", 500),
-        Chams = GetConfig("ESP_Highlight", false),
+        Enabled = false,
+        TeamCheck = true,
+        MaxDistance = 500,
+        Chams = false,
         ChamsFillColor = Color3.fromRGB(255, 60, 60),
         ChamsOutlineColor = Color3.fromRGB(255, 255, 255),
-        Boxes = GetConfig("ESP_Boxes", false),
-        Names = GetConfig("ESP_Name", false),
-        Health = GetConfig("ESP_HealthBar", false),
-        Distance = GetConfig("ESP_Studs", false),
+        Boxes = false,
+        Names = false,
+        Health = false,
+        Distance = false,
         Tracers = false,
     },
 
     -- Player Auras (High-Tech)
     Aura = {
         Enabled = false,
-        Type = "Glow", -- Glow, Hexagon, DataStream, EnergyPulse, Hologram, ScanLines
-        Color = Color3.fromRGB(0, 255, 255), -- Cyan
-        SecondaryColor = Color3.fromRGB(255, 0, 255), -- Magenta
+        Type = "Glow",
+        Color = Color3.fromRGB(0, 255, 255),
+        SecondaryColor = Color3.fromRGB(255, 0, 255),
         Size = 5,
         Speed = 2,
         Intensity = 50,
@@ -63,7 +64,7 @@ Visuals.Settings = {
     -- Custom Chams
     ChamsStyle = {
         Enabled = false,
-        Style = "Hologram", -- Hologram, Neon, Ghost, Cyber, None
+        Style = "Hologram",
         Color = Color3.fromRGB(0, 255, 255),
         OutlineColor = Color3.fromRGB(255, 255, 255),
         GlowIntensity = 2,
@@ -77,8 +78,6 @@ Visuals.Settings = {
         Material = Enum.Material.Neon,
         Transparency = 0.3,
     },
-
-    -- Screen FX (removed - use World tab instead)
 
     -- Weather
     Weather = {
@@ -197,12 +196,10 @@ local function CreateAura(player, character)
     local root = character:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    -- Create folder for aura effects
     local auraFolder = Instance.new("Folder")
     auraFolder.Name = "AuraEffects"
     auraFolder.Parent = character
 
-    -- Create attachments on all body parts
     local attachments = {}
     for _, part in ipairs(character:GetChildren()) do
         if part:IsA("BasePart") then
@@ -213,7 +210,6 @@ local function CreateAura(player, character)
         end
     end
 
-    -- Main particles (will be configured based on type)
     local particles = Instance.new("ParticleEmitter")
     particles.Name = "AuraParticles"
     particles.Rate = Visuals.Settings.Aura.Intensity
@@ -232,20 +228,17 @@ local function CreateAura(player, character)
     particles.LightInfluence = 0
     particles.LockedToPart = true
 
-    -- Add to all attachments
     for _, att in ipairs(attachments) do
         local clone = particles:Clone()
         clone.Parent = att
     end
 
-    -- Point light
     local light = Instance.new("PointLight")
     light.Color = Visuals.Settings.Aura.Color
     light.Range = Visuals.Settings.Aura.Size * 2
     light.Brightness = 3
     light.Parent = root
 
-    -- Energy pulse ring (for EnergyPulse type)
     local pulseRing = Instance.new("Part")
     pulseRing.Name = "PulseRing"
     pulseRing.Size = Vector3.new(1, 0.1, 1)
@@ -258,7 +251,6 @@ local function CreateAura(player, character)
     pulseRing.Shape = Enum.PartType.Cylinder
     pulseRing.Parent = auraFolder
 
-    -- Scan lines part (for ScanLines type)
     local scanPart = Instance.new("Part")
     scanPart.Name = "ScanLines"
     scanPart.Size = Vector3.new(4, 0.05, 4)
@@ -292,7 +284,6 @@ local function UpdateAuras()
             if data.folder then data.folder:Destroy() end
             AuraObjects[character] = nil
         elseif S.Enabled then
-            -- Update all particle clones
             for _, att in ipairs(data.attachments) do
                 if att and att.Parent then
                     local particles = att:FindFirstChild("AuraParticles")
@@ -300,7 +291,6 @@ local function UpdateAuras()
                         particles.Color = ColorSequence.new(S.Color)
                         particles.LightEmission = 1
 
-                        -- Configure based on type
                         if S.Type == "Glow" then
                             particles.Texture = "rbxassetid://567454904"
                             particles.Rate = S.Intensity
@@ -318,7 +308,7 @@ local function UpdateAuras()
                             particles.RotSpeed = NumberRange.new(-90, 90)
 
                         elseif S.Type == "Hexagon" then
-                            particles.Texture = "rbxassetid://243728733" -- hexagon
+                            particles.Texture = "rbxassetid://243728733"
                             particles.Rate = S.Intensity * 0.5
                             particles.Lifetime = NumberRange.new(1, 2)
                             particles.Speed = NumberRange.new(0.5, 1)
@@ -348,7 +338,7 @@ local function UpdateAuras()
                             particles.Rotation = NumberRange.new(0, 0)
                             particles.RotSpeed = NumberRange.new(0, 0)
                             particles.VelocitySpread = 0
-                            particles.Speed = NumberRange.new(-10, -5) -- falling
+                            particles.Speed = NumberRange.new(-10, -5)
 
                         elseif S.Type == "EnergyPulse" then
                             particles.Texture = "rbxassetid://567454904"
@@ -407,12 +397,10 @@ local function UpdateAuras()
                 end
             end
 
-            -- Update light
             data.light.Color = S.Color
             data.light.Range = S.Size * 2
             data.light.Enabled = true
 
-            -- Energy pulse ring
             if S.Type == "EnergyPulse" then
                 data.pulseTime = data.pulseTime + (S.Speed * 0.02)
                 local pulseSize = (data.pulseTime % 1) * S.Size * 2
@@ -427,7 +415,6 @@ local function UpdateAuras()
                 data.pulseRing.Transparency = 1
             end
 
-            -- Scan lines
             if S.Type == "ScanLines" then
                 data.scanTime = data.scanTime + (S.Speed * 0.01)
                 local scanY = math.sin(data.scanTime) * 3
@@ -440,7 +427,6 @@ local function UpdateAuras()
                 data.scanPart.Transparency = 1
             end
         else
-            -- Disable all
             for _, att in ipairs(data.attachments) do
                 if att and att.Parent then
                     local particles = att:FindFirstChild("AuraParticles")
@@ -460,7 +446,6 @@ end
 
 local function ApplyCustomChams(character, data)
     if not Visuals.Settings.ChamsStyle.Enabled then
-        -- Reset to normal if disabled
         if data.highlight then
             data.highlight.FillTransparency = 0.5
             data.highlight.OutlineTransparency = 0
@@ -479,13 +464,11 @@ local function ApplyCustomChams(character, data)
     if not data.highlight then return end
 
     if style == "Hologram" then
-        -- Hologram: semi-transparent with bright outline
         data.highlight.FillColor = color
         data.highlight.OutlineColor = outlineColor
         data.highlight.FillTransparency = 0.7
         data.highlight.OutlineTransparency = 0
 
-        -- Add scan line effect via billboard
         if not data.scanLine then
             local scanLine = Instance.new("Frame")
             scanLine.Name = "ScanLine"
@@ -497,7 +480,6 @@ local function ApplyCustomChams(character, data)
             data.scanLine = scanLine
         end
 
-        -- Animate scan line
         if data.scanLine then
             data.scanTime = (data.scanTime or 0) + scanSpeed * 0.01
             local yPos = math.sin(data.scanTime) * 20
@@ -506,39 +488,33 @@ local function ApplyCustomChams(character, data)
         end
 
     elseif style == "Neon" then
-        -- Neon: bright glow effect
         data.highlight.FillColor = color
         data.highlight.OutlineColor = Color3.new(1, 1, 1)
         data.highlight.FillTransparency = 0.3
         data.highlight.OutlineTransparency = 0
 
-        -- Remove scan line if exists
         if data.scanLine then
             data.scanLine:Destroy()
             data.scanLine = nil
         end
 
     elseif style == "Ghost" then
-        -- Ghost: very transparent, ethereal
         data.highlight.FillColor = color
         data.highlight.OutlineColor = outlineColor
         data.highlight.FillTransparency = 0.9
         data.highlight.OutlineTransparency = 0.5
 
-        -- Remove scan line if exists
         if data.scanLine then
             data.scanLine:Destroy()
             data.scanLine = nil
         end
 
     elseif style == "Cyber" then
-        -- Cyber: pulsing neon with grid effect
         data.highlight.FillColor = color
         data.highlight.OutlineColor = outlineColor
         data.highlight.FillTransparency = 0.4 + math.sin(tick() * scanSpeed) * 0.2
         data.highlight.OutlineTransparency = 0
 
-        -- Remove scan line if exists
         if data.scanLine then
             data.scanLine:Destroy()
             data.scanLine = nil
@@ -566,19 +542,12 @@ local function ApplyArmChams()
 end
 
 -- ============================================================
--- SCREEN FX
--- ============================================================
-
--- Screen FX removed - use World tab for color correction and bloom
-
--- ============================================================
 -- WEATHER
 -- ============================================================
 
 local function CreateWeather()
     if WeatherObjects.particles then return end
 
-    -- Create attachment in workspace for particles
     local weatherPart = Instance.new("Part")
     weatherPart.Name = "WeatherEmitter"
     weatherPart.Size = Vector3.new(200, 1, 200)
@@ -593,7 +562,6 @@ local function CreateWeather()
     local attachment = Instance.new("Attachment")
     attachment.Parent = weatherPart
 
-    -- Weather particles
     local particles = Instance.new("ParticleEmitter")
     particles.Name = "WeatherParticles"
     particles.Rate = Visuals.Settings.Weather.Intensity
@@ -618,7 +586,6 @@ local function UpdateWeather()
 
     CreateWeather()
 
-    -- Move weather with player
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         WeatherObjects.part.Position = LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 50, 0)
     end
@@ -628,7 +595,6 @@ local function UpdateWeather()
     particles.Rate = Visuals.Settings.Weather.Intensity
     particles.Color = ColorSequence.new(Visuals.Settings.Weather.Color)
 
-    -- Adjust based on type
     if Visuals.Settings.Weather.Type == "Rain" then
         particles.Speed = NumberRange.new(80, 120)
         particles.Size = NumberSequence.new(0.1)
@@ -665,7 +631,6 @@ local function OnPlayerAdded(player)
         character:WaitForChild("HumanoidRootPart", 5)
         task.wait(0.3)
 
-        -- Always create ESP objects, visibility controlled by settings
         CreateESP(player, character)
         CreateAura(player, character)
     end)
@@ -675,7 +640,6 @@ local function OnPlayerAdded(player)
             player.Character:WaitForChild("Head", 5)
             task.wait(0.3)
 
-            -- Always create ESP objects, visibility controlled by settings
             CreateESP(player, player.Character)
             CreateAura(player, player.Character)
         end)
@@ -689,7 +653,7 @@ local function OnPlayerAdded(player)
         end
 
         if AuraObjects[character] then
-            if AuraObjects[character].aura then AuraObjects[character].aura:Destroy() end
+            if AuraObjects[character].folder then AuraObjects[character].folder:Destroy() end
             AuraObjects[character] = nil
         end
     end)
@@ -711,7 +675,7 @@ Players.PlayerRemoving:Connect(function(player)
             ESPObjects[player.Character] = nil
         end
         if AuraObjects[player.Character] then
-            if AuraObjects[player.Character].aura then AuraObjects[player.Character].aura:Destroy() end
+            if AuraObjects[player.Character].folder then AuraObjects[player.Character].folder:Destroy() end
             AuraObjects[player.Character] = nil
         end
     end
@@ -751,7 +715,6 @@ function Visuals.Update()
                 if data.highlight then
                     data.highlight.Enabled = visible and (S.ESP.Chams or S.ChamsStyle.Enabled)
 
-                    -- Apply custom chams if enabled
                     if S.ChamsStyle.Enabled then
                         ApplyCustomChams(character, data)
                     else
@@ -763,18 +726,15 @@ function Visuals.Update()
                 end
 
                 if visible then
-                    -- Name
                     if data.nameLabel then
                         data.nameLabel.Visible = S.ESP.Names
                     end
 
-                    -- Health bar (vertical, left side)
                     if data.healthBg and data.healthFill then
                         data.healthBg.Visible = S.ESP.Health
                         local pct = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
                         data.healthFill.Size = UDim2.new(1, 0, pct, 0)
 
-                        -- Color based on health
                         if pct > 0.6 then
                             data.healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
                         elseif pct > 0.3 then
@@ -784,7 +744,6 @@ function Visuals.Update()
                         end
                     end
 
-                    -- Distance (bottom)
                     if data.distLabel then
                         data.distLabel.Visible = S.ESP.Distance
                         data.distLabel.Text = string.format("%.0f studs", distance)
@@ -831,12 +790,23 @@ function Visuals.Init(deps)
     local C = GUI.Components
     local S = Visuals.Settings
 
-    -- ESP Section (Collapsible)
-    local espSection, setEspOpen = C.CollapsibleSection(page, "ESP", 1, S.ESP.Enabled)
+    -- Load saved settings
+    S.ESP.Enabled = GetConfig("ESP_Enabled", false)
+    S.ESP.TeamCheck = GetConfig("ESP_TeamCheck", true)
+    S.ESP.MaxDistance = GetConfig("ESP_MaxDistance", 500)
+    S.ESP.Chams = GetConfig("ESP_Highlight", false)
+    S.ESP.Names = GetConfig("ESP_Name", false)
+    S.ESP.Health = GetConfig("ESP_HealthBar", false)
+    S.ESP.Distance = GetConfig("ESP_Studs", false)
+
+    -- ========================================
+    -- ESP MASTER SECTION
+    -- ========================================
+    local espSection, setEspOpen = C.MasterSection(page, "ESP", 1, S.ESP.Enabled)
+
     C.Toggle(espSection, "Enabled", S.ESP.Enabled, function(v) 
         S.ESP.Enabled = v 
         SetConfig("ESP_Enabled", v)
-        setEspOpen(v)
     end, 2)
     C.Toggle(espSection, "Chams", S.ESP.Chams, function(v)
         S.ESP.Chams = v
@@ -863,42 +833,60 @@ function Visuals.Init(deps)
         SetConfig("ESP_MaxDistance", v)
     end, 8)
 
-    -- Player Aura Section (Collapsible)
-    local auraSection, setAuraOpen = C.CollapsibleSection(page, "Player Aura", 10, S.Aura.Enabled)
+    setEspOpen(S.ESP.Enabled)
+
+    -- ========================================
+    -- PLAYER AURA MASTER SECTION
+    -- ========================================
+    local auraSection, setAuraOpen = C.MasterSection(page, "Player Aura", 10, S.Aura.Enabled)
+
     C.Toggle(auraSection, "Enabled", S.Aura.Enabled, function(v) 
         S.Aura.Enabled = v
-        setAuraOpen(v)
     end, 11)
     C.Dropdown(auraSection, "Aura Type", {"Glow", "Hexagon", "DataStream", "EnergyPulse", "Hologram", "ScanLines"}, S.Aura.Type, function(v) S.Aura.Type = v end, 12)
     C.Slider(auraSection, "Size", 1, 20, S.Aura.Size, function(v) S.Aura.Size = v end, 13)
     C.Slider(auraSection, "Speed", 1, 10, S.Aura.Speed, function(v) S.Aura.Speed = v end, 14)
     C.Slider(auraSection, "Intensity", 10, 200, S.Aura.Intensity, function(v) S.Aura.Intensity = v end, 15)
 
-    -- Custom Chams Section (Collapsible)
-    local chamsSection, setChamsOpen = C.CollapsibleSection(page, "Custom Chams", 20, S.ChamsStyle.Enabled)
+    setAuraOpen(S.Aura.Enabled)
+
+    -- ========================================
+    -- CUSTOM CHAMS MASTER SECTION
+    -- ========================================
+    local chamsSection, setChamsOpen = C.MasterSection(page, "Custom Chams", 20, S.ChamsStyle.Enabled)
+
     C.Toggle(chamsSection, "Enabled", S.ChamsStyle.Enabled, function(v) 
         S.ChamsStyle.Enabled = v
-        setChamsOpen(v)
     end, 21)
     C.Dropdown(chamsSection, "Style", {"Hologram", "Neon", "Ghost", "Cyber"}, S.ChamsStyle.Style, function(v) S.ChamsStyle.Style = v end, 22)
     C.Slider(chamsSection, "Glow Intensity", 0, 10, S.ChamsStyle.GlowIntensity, function(v) S.ChamsStyle.GlowIntensity = v end, 23)
     C.Slider(chamsSection, "Scan Speed", 0, 10, S.ChamsStyle.ScanSpeed, function(v) S.ChamsStyle.ScanSpeed = v end, 24)
 
-    -- Arm Chams Section (Collapsible)
-    local armSection, setArmOpen = C.CollapsibleSection(page, "Arm Chams", 30, S.ArmChams.Enabled)
+    setChamsOpen(S.ChamsStyle.Enabled)
+
+    -- ========================================
+    -- ARM CHAMS MASTER SECTION
+    -- ========================================
+    local armSection, setArmOpen = C.MasterSection(page, "Arm Chams", 30, S.ArmChams.Enabled)
+
     C.Toggle(armSection, "Enabled", S.ArmChams.Enabled, function(v) 
         S.ArmChams.Enabled = v
-        setArmOpen(v)
     end, 31)
 
-    -- Weather Section (Collapsible)
-    local weatherSection, setWeatherOpen = C.CollapsibleSection(page, "Weather", 40, S.Weather.Enabled)
+    setArmOpen(S.ArmChams.Enabled)
+
+    -- ========================================
+    -- WEATHER MASTER SECTION
+    -- ========================================
+    local weatherSection, setWeatherOpen = C.MasterSection(page, "Weather", 40, S.Weather.Enabled)
+
     C.Toggle(weatherSection, "Enabled", S.Weather.Enabled, function(v) 
         S.Weather.Enabled = v
-        setWeatherOpen(v)
     end, 41)
     C.Dropdown(weatherSection, "Type", {"Rain", "Snow", "Storm"}, S.Weather.Type, function(v) S.Weather.Type = v end, 42)
     C.Slider(weatherSection, "Intensity", 10, 200, S.Weather.Intensity, function(v) S.Weather.Intensity = v end, 43)
+
+    setWeatherOpen(S.Weather.Enabled)
 
     print("[Visuals] GUI registered")
 end
@@ -911,11 +899,11 @@ function Visuals.Cleanup()
     table.clear(ESPObjects)
 
     for character, data in pairs(AuraObjects) do
-        if data.attachment then data.attachment:Destroy() end
+        if data.folder then data.folder:Destroy() end
     end
     table.clear(AuraObjects)
 
-    if WeatherObjects.folder then WeatherObjects.folder:Destroy() end
+    if WeatherObjects.part then WeatherObjects.part:Destroy() end
 end
 
 print("[Visuals] Module loaded - MAXIMUM COOL")

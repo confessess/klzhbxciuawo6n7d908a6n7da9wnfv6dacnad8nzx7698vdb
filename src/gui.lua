@@ -1,5 +1,5 @@
 -- ============================================================
--- RIVALS GUI - Complete working version
+-- RIVALS GUI - Complete working version with Master Sections
 -- ============================================================
 
 local TweenService = game:GetService("TweenService")
@@ -17,6 +17,7 @@ local Theme = {
     TextDim = Color3.fromRGB(100, 100, 120),
     Accent = Color3.fromRGB(130, 100, 255),
     Blue = Color3.fromRGB(80, 140, 255),
+    HeaderBlue = Color3.fromRGB(100, 180, 255),
 }
 
 local Icons = {
@@ -59,12 +60,110 @@ function Components.Section(page, text, order)
     lbl.Size = UDim2.new(1, 0, 0, 20)
     lbl.BackgroundTransparency = 1
     lbl.Text = string.upper(text)
-    lbl.TextColor3 = Theme.TextDim
+    lbl.TextColor3 = Theme.HeaderBlue
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 11
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.LayoutOrder = order or 0
     lbl.Parent = page
+end
+
+-- MASTER SECTION: Header acts as toggle for its contents
+function Components.MasterSection(page, text, order, defaultOpen)
+    local sectionFrame = Instance.new("Frame")
+    sectionFrame.Size = UDim2.new(1, 0, 0, 28)
+    sectionFrame.BackgroundTransparency = 1
+    sectionFrame.LayoutOrder = order or 0
+    sectionFrame.ClipsDescendants = false
+    sectionFrame.Parent = page
+
+    -- Header button (acts as master toggle)
+    local header = Instance.new("TextButton")
+    header.Size = UDim2.new(1, 0, 0, 28)
+    header.BackgroundColor3 = Theme.Element
+    header.BorderSizePixel = 0
+    header.Text = ""
+    header.AutoButtonColor = false
+    header.Parent = sectionFrame
+    corner(header, 4)
+
+    -- Header label
+    local headerLbl = Instance.new("TextLabel")
+    headerLbl.Size = UDim2.new(1, -40, 1, 0)
+    headerLbl.Position = UDim2.new(0, 12, 0, 0)
+    headerLbl.BackgroundTransparency = 1
+    headerLbl.Text = string.upper(text)
+    headerLbl.TextColor3 = Theme.HeaderBlue
+    headerLbl.Font = Enum.Font.GothamBold
+    headerLbl.TextSize = 12
+    headerLbl.TextXAlignment = Enum.TextXAlignment.Left
+    headerLbl.Parent = header
+
+    -- Arrow indicator
+    local arrow = Instance.new("TextLabel")
+    arrow.Size = UDim2.fromOffset(20, 20)
+    arrow.Position = UDim2.new(1, -28, 0.5, -10)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = defaultOpen and "▼" or "▶"
+    arrow.TextColor3 = Theme.HeaderBlue
+    arrow.Font = Enum.Font.GothamBold
+    arrow.TextSize = 10
+    arrow.Parent = header
+
+    -- Content container
+    local content = Instance.new("Frame")
+    content.Size = UDim2.new(1, 0, 0, 0)
+    content.BackgroundTransparency = 1
+    content.ClipsDescendants = true
+    content.Visible = defaultOpen or false
+    content.Parent = sectionFrame
+
+    local contentLayout = Instance.new("UIListLayout")
+    contentLayout.Padding = UDim.new(0, 4)
+    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    contentLayout.Parent = content
+
+    -- State
+    local isOpen = defaultOpen or false
+    local contentHeight = 0
+
+    -- Update content height
+    contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        contentHeight = contentLayout.AbsoluteContentSize.Y
+        if isOpen then
+            content.Size = UDim2.new(1, 0, 0, contentHeight)
+            sectionFrame.Size = UDim2.new(1, 0, 0, 28 + contentHeight + 4)
+        end
+    end)
+
+    -- Toggle function
+    local function setOpen(open)
+        isOpen = open
+
+        if isOpen then
+            arrow.Text = "▼"
+            content.Visible = true
+            content.Size = UDim2.new(1, 0, 0, contentHeight)
+            sectionFrame.Size = UDim2.new(1, 0, 0, 28 + contentHeight + 4)
+        else
+            arrow.Text = "▶"
+            content.Size = UDim2.new(1, 0, 0, 0)
+            sectionFrame.Size = UDim2.new(1, 0, 0, 28)
+            task.delay(0.15, function()
+                if not isOpen then
+                    content.Visible = false
+                end
+            end)
+        end
+    end
+
+    -- Toggle on header click
+    header.MouseButton1Click:Connect(function()
+        setOpen(not isOpen)
+    end)
+
+    -- Return content frame AND control function
+    return content, setOpen
 end
 
 function Components.Toggle(page, label, default, callback, order)
@@ -421,101 +520,9 @@ function Components.Keybind(page, label, default, callback, order)
     return {Set = function(k) current = k keyBtn.Text = tostring(k):gsub("Enum.KeyCode.", "") end, Get = function() return current end}
 end
 
+-- Keep old CollapsibleSection for backwards compatibility
 function Components.CollapsibleSection(page, text, order, defaultOpen)
-    local sectionFrame = Instance.new("Frame")
-    sectionFrame.Size = UDim2.new(1, 0, 0, 28)
-    sectionFrame.BackgroundTransparency = 1
-    sectionFrame.LayoutOrder = order or 0
-    sectionFrame.ClipsDescendants = false
-    sectionFrame.Parent = page
-
-    -- Header button
-    local header = Instance.new("TextButton")
-    header.Size = UDim2.new(1, 0, 0, 28)
-    header.BackgroundColor3 = Theme.Element
-    header.BorderSizePixel = 0
-    header.Text = ""
-    header.AutoButtonColor = false
-    header.Parent = sectionFrame
-    corner(header, 4)
-
-    -- Header label
-    local headerLbl = Instance.new("TextLabel")
-    headerLbl.Size = UDim2.new(1, -40, 1, 0)
-    headerLbl.Position = UDim2.new(0, 12, 0, 0)
-    headerLbl.BackgroundTransparency = 1
-    headerLbl.Text = string.upper(text)
-    headerLbl.TextColor3 = Color3.fromRGB(100, 180, 255)
-    headerLbl.Font = Enum.Font.GothamBold
-    headerLbl.TextSize = 12
-    headerLbl.TextXAlignment = Enum.TextXAlignment.Left
-    headerLbl.Parent = header
-
-    -- Arrow indicator
-    local arrow = Instance.new("TextLabel")
-    arrow.Size = UDim2.fromOffset(20, 20)
-    arrow.Position = UDim2.new(1, -28, 0.5, -10)
-    arrow.BackgroundTransparency = 1
-    arrow.Text = defaultOpen and "▼" or "▶"
-    arrow.TextColor3 = Color3.fromRGB(100, 180, 255)
-    arrow.Font = Enum.Font.GothamBold
-    arrow.TextSize = 10
-    arrow.Parent = header
-
-    -- Content container
-    local content = Instance.new("Frame")
-    content.Size = UDim2.new(1, 0, 0, 0)
-    content.BackgroundTransparency = 1
-    content.ClipsDescendants = true
-    content.Visible = defaultOpen or false
-    content.Parent = sectionFrame
-
-    local contentLayout = Instance.new("UIListLayout")
-    contentLayout.Padding = UDim.new(0, 4)
-    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    contentLayout.Parent = content
-
-    -- State
-    local isOpen = defaultOpen or false
-    local contentHeight = 0
-
-    -- Update content height
-    contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        contentHeight = contentLayout.AbsoluteContentSize.Y
-        if isOpen then
-            content.Size = UDim2.new(1, 0, 0, contentHeight)
-            sectionFrame.Size = UDim2.new(1, 0, 0, 28 + contentHeight + 4)
-        end
-    end)
-
-    -- Toggle function
-    local function setOpen(open)
-        isOpen = open
-
-        if isOpen then
-            arrow.Text = "▼"
-            content.Visible = true
-            content.Size = UDim2.new(1, 0, 0, contentHeight)
-            sectionFrame.Size = UDim2.new(1, 0, 0, 28 + contentHeight + 4)
-        else
-            arrow.Text = "▶"
-            content.Size = UDim2.new(1, 0, 0, 0)
-            sectionFrame.Size = UDim2.new(1, 0, 0, 28)
-            task.delay(0.15, function()
-                if not isOpen then
-                    content.Visible = false
-                end
-            end)
-        end
-    end
-
-    -- Toggle on header click
-    header.MouseButton1Click:Connect(function()
-        setOpen(not isOpen)
-    end)
-
-    -- Return content frame AND control function
-    return content, setOpen
+    return Components.MasterSection(page, text, order, defaultOpen)
 end
 
 GUI.Components = Components
@@ -541,7 +548,6 @@ local function switchTab(name)
             end
         end
     end
-    -- Update preview visibility
     if GUI.UpdatePreviewVisibility then
         GUI.UpdatePreviewVisibility()
     end
@@ -664,7 +670,7 @@ local function createPreviewWindows()
     espTitle.Size = UDim2.new(1, 0, 0, 32)
     espTitle.BackgroundTransparency = 1
     espTitle.Text = "ESP PREVIEW"
-    espTitle.TextColor3 = Theme.Accent
+    espTitle.TextColor3 = Theme.HeaderBlue
     espTitle.Font = Enum.Font.GothamBold
     espTitle.TextSize = 12
     espTitle.Parent = ESPPreviewWindow
@@ -699,7 +705,7 @@ local function createPreviewWindows()
     skinTitle.Size = UDim2.new(1, 0, 0, 28)
     skinTitle.BackgroundTransparency = 1
     skinTitle.Text = "SKIN PREVIEW"
-    skinTitle.TextColor3 = Theme.Accent
+    skinTitle.TextColor3 = Theme.HeaderBlue
     skinTitle.Font = Enum.Font.GothamBold
     skinTitle.TextSize = 11
     skinTitle.Parent = SkinPreviewWindow
@@ -876,7 +882,6 @@ function GUI.Init(deps)
     if settings then
         local C = GUI.Components
 
-        -- Get saved keybind or default
         local savedKeybind = Enum.KeyCode.RightControl
         if Config and Config.Get then
             local saved = Config.Get("MenuKeybind")
@@ -893,11 +898,9 @@ function GUI.Init(deps)
         C.Section(settings, "Menu", 1)
         C.Keybind(settings, "Menu Keybind", savedKeybind, function(k)
             print("[GUI] Keybind changed to: " .. tostring(k))
-            -- Save to config
             if Config and Config.Set then
                 Config.Set("MenuKeybind", tostring(k):gsub("Enum.KeyCode.", ""))
             end
-            -- Update the keybind variable
             MenuKeybind = k
         end, 2)
 

@@ -2,6 +2,7 @@
 -- Rivals Modular -- Misc
 -- Hit sounds, device spoofer, particles, trash talk,
 -- custom crosshair, teleport, matchmaking
+-- Master Section UI: Each header toggles its own module
 -- ============================================================
 
 local Misc = {}
@@ -143,7 +144,6 @@ end
 
 local function setupHitSounds()
     -- DISABLED - causes crashes from constant sound creation
-    -- TODO: Find better way to detect hits
 end
 
 -- ------------------------------------------------------------
@@ -158,7 +158,6 @@ local function updateDeviceSpoofer()
         spooferConn = nil
     end
 
-    -- Throttle to once per second, but allow stopping
     if spooferLoop then
         spooferLoop = false
         task.wait(1.1)
@@ -226,7 +225,6 @@ end
 -- Custom Crosshair
 -- ------------------------------------------------------------
 
--- Crosshair disabled - Drawing API causes crashes
 local crosshairGui = nil
 
 local function updateCrosshair(dt)
@@ -235,7 +233,7 @@ local function updateCrosshair(dt)
 end
 
 -- ------------------------------------------------------------
--- Teleport Behind Enemy
+-- Teleport Behind Enemy (moved to teleport.lua, keeping for compat)
 -- ------------------------------------------------------------
 
 local function getNearestEnemy()
@@ -257,26 +255,6 @@ local function getNearestEnemy()
     end
 
     return nearest
-end
-
-local function teleportBehindEnemy()
-    if not Config.Get("TPBehind_Enabled") then return end
-
-    local maxDist = Config.Get("TPBehind_MaxDist") or 1000
-    local behindDist = Config.Get("TPBehind_Distance") or 5
-
-    local target = getNearestEnemy()
-    if not target then return end
-
-    local localRoot = Utils.CharacterRoot(LocalPlayer)
-    local targetRoot = Utils.CharacterRoot(target)
-    if not localRoot or not targetRoot then return end
-
-    local dist = (targetRoot.Position - localRoot.Position).Magnitude
-    if dist > maxDist then return end
-
-    local behindPos = targetRoot.Position - targetRoot.CFrame.LookVector * behindDist
-    localRoot.CFrame = CFrame.new(behindPos)
 end
 
 -- ------------------------------------------------------------
@@ -301,11 +279,6 @@ end
 function Misc.Update(dt)
     if Core.Unloaded then return end
     updateCrosshair(dt)
-
-    -- Teleport behind enemy
-    if Config.Get("TPBehind_Enabled") then
-        teleportBehindEnemy()
-    end
 end
 
 -- ------------------------------------------------------------
@@ -338,21 +311,40 @@ function Misc.Init(deps)
         end
     end)
 
-    -- Register GUI
-    -- Register GUI (Misc tab)
+    -- Register GUI (Misc tab) with Master Sections
     local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.Components.Section(page, "Hit Sounds", 40)
-        GUI.Components.Toggle(page, "Enabled", Config.Get("HitSound_Enabled"), function(v) Config.Set("HitSound_Enabled", v) end, 41)
-        GUI.Components.Slider(page, "Volume", 0, 10, Config.Get("HitSound_Volume"), function(v) Config.Set("HitSound_Volume", v) end, 42)
-        GUI.Components.Dropdown(page, "Sound", {"None", "Skeet", "Neverlose", "Rust", "TF2"}, Config.Get("HitSound_Selection"), function(v) Config.Set("HitSound_Selection", v) end, 43)
+        local C = GUI.Components
 
-        GUI.Components.Section(page, "Crosshair", 44)
-        GUI.Components.Toggle(page, "Enabled", Config.Get("Crosshair_Enabled"), function(v) Config.Set("Crosshair_Enabled", v) end, 45)
-        GUI.Components.Toggle(page, "Rainbow", Config.Get("Crosshair_Rainbow"), function(v) Config.Set("Crosshair_Rainbow", v) end, 46)
+        -- ========================================
+        -- HIT SOUNDS MASTER SECTION
+        -- ========================================
+        local hitSection, setHitOpen = C.MasterSection(page, "Hit Sounds", 90, Config.Get("HitSound_Enabled") or false)
 
-        GUI.Components.Section(page, "Other", 47)
-        GUI.Components.Toggle(page, "Trash Talk (V)", Config.Get("TrashTalk_Enabled"), function(v) Config.Set("TrashTalk_Enabled", v) end, 48)
+        C.Toggle(hitSection, "Enabled", Config.Get("HitSound_Enabled"), function(v) Config.Set("HitSound_Enabled", v) end, 91)
+        C.Slider(hitSection, "Volume", 0, 10, Config.Get("HitSound_Volume"), function(v) Config.Set("HitSound_Volume", v) end, 92)
+        C.Dropdown(hitSection, "Sound", HIT_SOUND_LIST, Config.Get("HitSound_Selection"), function(v) Config.Set("HitSound_Selection", v) end, 93)
+
+        setHitOpen(Config.Get("HitSound_Enabled") or false)
+
+        -- ========================================
+        -- CROSSHAIR MASTER SECTION
+        -- ========================================
+        local crossSection, setCrossOpen = C.MasterSection(page, "Crosshair", 100, Config.Get("Crosshair_Enabled") or false)
+
+        C.Toggle(crossSection, "Enabled", Config.Get("Crosshair_Enabled"), function(v) Config.Set("Crosshair_Enabled", v) end, 101)
+        C.Toggle(crossSection, "Rainbow", Config.Get("Crosshair_Rainbow"), function(v) Config.Set("Crosshair_Rainbow", v) end, 102)
+
+        setCrossOpen(Config.Get("Crosshair_Enabled") or false)
+
+        -- ========================================
+        -- TRASH TALK MASTER SECTION
+        -- ========================================
+        local trashSection, setTrashOpen = C.MasterSection(page, "Trash Talk (V)", 110, Config.Get("TrashTalk_Enabled") or false)
+
+        C.Toggle(trashSection, "Enabled", Config.Get("TrashTalk_Enabled"), function(v) Config.Set("TrashTalk_Enabled", v) end, 111)
+
+        setTrashOpen(Config.Get("TrashTalk_Enabled") or false)
     end
 
     print("[rivals] Misc module initialized.")

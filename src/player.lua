@@ -1,6 +1,7 @@
 -- ============================================================
 -- Rivals Modular -- Player
 -- Fly, walkspeed, noclip, infinite jump
+-- Master Section UI: Each header toggles its own module
 -- ============================================================
 
 local Player = {}
@@ -79,6 +80,22 @@ end
 -- WalkSpeed
 -- ------------------------------------------------------------
 
+function stopWalkSpeed()
+    if walkSpeedConn then
+        walkSpeedConn:Disconnect()
+        walkSpeedConn = nil
+    end
+    local character = LocalPlayer.Character
+    if character then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local bv = root:FindFirstChildOfClass("BodyVelocity")
+            if bv then bv:Destroy() end
+        end
+    end
+end
+
+
 local function startWalkSpeed()
     local character = LocalPlayer.Character
     if not character then return end
@@ -114,21 +131,6 @@ local function startWalkSpeed()
 
         bv.Velocity = dir * (Config.Get("WalkSpeed_Value") or 16)
     end)
-end
-
-function stopWalkSpeed()
-    if walkSpeedConn then
-        walkSpeedConn:Disconnect()
-        walkSpeedConn = nil
-    end
-    local character = LocalPlayer.Character
-    if character then
-        local root = character:FindFirstChild("HumanoidRootPart")
-        if root then
-            local bv = root:FindFirstChildOfClass("BodyVelocity")
-            if bv then bv:Destroy() end
-        end
-    end
 end
 
 -- ------------------------------------------------------------
@@ -218,26 +220,57 @@ function Player.Init(deps)
         end
     end)
 
-    -- Register GUI
-    -- Register GUI (Misc tab)
+    -- Register GUI (Misc tab) with Master Sections
     local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.Components.Section(page, "Movement", 1)
-        GUI.Components.Toggle(page, "Fly", Config.Get("Fly_Enabled"), function(v) 
+        local C = GUI.Components
+
+        -- ========================================
+        -- FLY MASTER SECTION
+        -- ========================================
+        local flySection, setFlyOpen = C.MasterSection(page, "Fly", 1, Config.Get("Fly_Enabled") or false)
+
+        C.Toggle(flySection, "Enabled", Config.Get("Fly_Enabled"), function(v) 
             Config.Set("Fly_Enabled", v)
             if v then startFly() else stopFly() end
         end, 2)
-        GUI.Components.Slider(page, "Fly Speed", 1, 100, Config.Get("Fly_Speed"), function(v) Config.Set("Fly_Speed", v) end, 3)
-        GUI.Components.Toggle(page, "WalkSpeed", Config.Get("WalkSpeed_Enabled"), function(v)
+        C.Slider(flySection, "Fly Speed", 1, 100, Config.Get("Fly_Speed"), function(v) Config.Set("Fly_Speed", v) end, 3)
+
+        setFlyOpen(Config.Get("Fly_Enabled") or false)
+
+        -- ========================================
+        -- WALKSPEED MASTER SECTION
+        -- ========================================
+        local walkSection, setWalkOpen = C.MasterSection(page, "WalkSpeed", 10, Config.Get("WalkSpeed_Enabled") or false)
+
+        C.Toggle(walkSection, "Enabled", Config.Get("WalkSpeed_Enabled"), function(v)
             Config.Set("WalkSpeed_Enabled", v)
             if v then startWalkSpeed() else stopWalkSpeed() end
-        end, 4)
-        GUI.Components.Slider(page, "WalkSpeed Value", 1, 100, Config.Get("WalkSpeed_Value"), function(v) Config.Set("WalkSpeed_Value", v) end, 5)
-        GUI.Components.Toggle(page, "Infinite Jump", Config.Get("InfJump_Enabled"), function(v) Config.Set("InfJump_Enabled", v) end, 6)
-        GUI.Components.Toggle(page, "Noclip", Config.Get("Noclip_Enabled"), function(v)
+        end, 11)
+        C.Slider(walkSection, "WalkSpeed Value", 1, 100, Config.Get("WalkSpeed_Value"), function(v) Config.Set("WalkSpeed_Value", v) end, 12)
+
+        setWalkOpen(Config.Get("WalkSpeed_Enabled") or false)
+
+        -- ========================================
+        -- INFINITE JUMP MASTER SECTION
+        -- ========================================
+        local jumpSection, setJumpOpen = C.MasterSection(page, "Infinite Jump", 20, Config.Get("InfJump_Enabled") or false)
+
+        C.Toggle(jumpSection, "Enabled", Config.Get("InfJump_Enabled"), function(v) Config.Set("InfJump_Enabled", v) end, 21)
+
+        setJumpOpen(Config.Get("InfJump_Enabled") or false)
+
+        -- ========================================
+        -- NOCLIP MASTER SECTION
+        -- ========================================
+        local noclipSection, setNoclipOpen = C.MasterSection(page, "Noclip", 30, Config.Get("Noclip_Enabled") or false)
+
+        C.Toggle(noclipSection, "Enabled", Config.Get("Noclip_Enabled"), function(v)
             Config.Set("Noclip_Enabled", v)
             if v then startNoclip() else stopNoclip() end
-        end, 7)
+        end, 31)
+
+        setNoclipOpen(Config.Get("Noclip_Enabled") or false)
     end
 
     print("[rivals] Player module initialized.")

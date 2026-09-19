@@ -1,6 +1,7 @@
 -- ============================================================
 -- Rivals Modular -- Combat
 -- Legit aimbot, silent aim, ragebot, triggerbot
+-- Master Section UI: Each header toggles its own module
 -- ============================================================
 
 local Combat = {}
@@ -27,7 +28,6 @@ local aimbotKeyDown = false
 local function isKeybindPressed()
     if not aimbotKeybind then return false end
 
-    -- Check if it's a mouse button
     if typeof(aimbotKeybind) == "EnumItem" then
         if aimbotKeybind.EnumType == Enum.UserInputType then
             return UserInputService:IsMouseButtonPressed(aimbotKeybind)
@@ -43,7 +43,6 @@ local function formatKeybind(kb)
     if not kb then return "None" end
     if typeof(kb) == "EnumItem" then
         local str = tostring(kb)
-        -- Extract just the name part
         local name = str:match("%.(%w+)$") or str
         return name
     end
@@ -448,20 +447,26 @@ function Combat.Init(deps)
     Mouse.Button1Down:Connect(onButton1Down)
     Mouse.Button1Up:Connect(onButton1Up)
 
-    -- Register GUI controls
-    -- Register GUI controls (Combat tab)
+    -- Register GUI controls (Combat tab) with Master Sections
     local page = GUI.GetPage and GUI.GetPage("Combat")
     if page then
-        -- Aimbot Section
-        GUI.Components.Section(page, "Aimbot", 1)
-        GUI.Components.Toggle(page, "Enabled", Config.Get("Aimbot_Enabled"), function(v) Config.Set("Aimbot_Enabled", v) end, 2)
+        local C = GUI.Components
+
+        -- ========================================
+        -- AIMBOT MASTER SECTION
+        -- ========================================
+        local aimbotSection, setAimbotOpen = C.MasterSection(page, "Aimbot", 1, Config.Get("Aimbot_Enabled") or false)
+
+        C.Toggle(aimbotSection, "Enabled", Config.Get("Aimbot_Enabled"), function(v) 
+            Config.Set("Aimbot_Enabled", v) 
+        end, 2)
 
         -- Hotkey with clear button
         local hotkeyFrame = Instance.new("Frame")
         hotkeyFrame.Size = UDim2.new(1, 0, 0, 32)
         hotkeyFrame.BackgroundTransparency = 1
         hotkeyFrame.LayoutOrder = 3
-        hotkeyFrame.Parent = page
+        hotkeyFrame.Parent = aimbotSection
 
         local hotkeyLbl = Instance.new("TextLabel")
         hotkeyLbl.Size = UDim2.new(0.4, 0, 1, 0)
@@ -517,7 +522,6 @@ function Combat.Init(deps)
                 if gp then return end
 
                 if input.UserInputType == Enum.UserInputType.Keyboard then
-                    -- Key pressed
                     aimbotKeybind = input.KeyCode
                     hotkeyBtn.Text = formatKeybind(input.KeyCode)
                     listening = false
@@ -525,7 +529,6 @@ function Combat.Init(deps)
                 elseif input.UserInputType == Enum.UserInputType.MouseButton1
                     or input.UserInputType == Enum.UserInputType.MouseButton2
                     or input.UserInputType == Enum.UserInputType.MouseButton3 then
-                    -- Mouse button pressed
                     aimbotKeybind = input.UserInputType
                     hotkeyBtn.Text = formatKeybind(input.UserInputType)
                     listening = false
@@ -541,35 +544,58 @@ function Combat.Init(deps)
             aimbotKeyDown = false
         end)
 
-        GUI.Components.Toggle(page, "Wall Check", Config.Get("Aimbot_WallCheck"), function(v) Config.Set("Aimbot_WallCheck", v) end, 4)
-        GUI.Components.Toggle(page, "Team Check", Config.Get("Aimbot_TeamCheck"), function(v) Config.Set("Aimbot_TeamCheck", v) end, 5)
-        GUI.Components.Toggle(page, "Smoothness", Config.Get("Aimbot_Smoothness"), function(v) Config.Set("Aimbot_Smoothness", v) end, 6)
-        GUI.Components.Toggle(page, "Prediction", Config.Get("Aimbot_Prediction"), function(v) Config.Set("Aimbot_Prediction", v) end, 7)
-        GUI.Components.Dropdown(page, "Aim Part", {"Head", "HumanoidRootPart"}, Config.Get("Aimbot_AimPart"), function(v) Config.Set("Aimbot_AimPart", v) end, 8)
-        GUI.Components.Toggle(page, "Show FOV", Config.Get("Aimbot_ShowFOV"), function(v) Config.Set("Aimbot_ShowFOV", v) end, 9)
-        GUI.Components.Slider(page, "FOV Size", 0, 1000, Config.Get("Aimbot_FOVSize"), function(v) Config.Set("Aimbot_FOVSize", v) end, 10)
-        GUI.Components.Slider(page, "Smooth Value", 0, 20, Config.Get("Aimbot_SmoothValue"), function(v) Config.Set("Aimbot_SmoothValue", v) end, 11)
+        C.Toggle(aimbotSection, "Wall Check", Config.Get("Aimbot_WallCheck"), function(v) Config.Set("Aimbot_WallCheck", v) end, 4)
+        C.Toggle(aimbotSection, "Team Check", Config.Get("Aimbot_TeamCheck"), function(v) Config.Set("Aimbot_TeamCheck", v) end, 5)
+        C.Toggle(aimbotSection, "Smoothness", Config.Get("Aimbot_Smoothness"), function(v) Config.Set("Aimbot_Smoothness", v) end, 6)
+        C.Toggle(aimbotSection, "Prediction", Config.Get("Aimbot_Prediction"), function(v) Config.Set("Aimbot_Prediction", v) end, 7)
+        C.Dropdown(aimbotSection, "Aim Part", {"Head", "HumanoidRootPart"}, Config.Get("Aimbot_AimPart"), function(v) Config.Set("Aimbot_AimPart", v) end, 8)
+        C.Toggle(aimbotSection, "Show FOV", Config.Get("Aimbot_ShowFOV"), function(v) Config.Set("Aimbot_ShowFOV", v) end, 9)
+        C.Slider(aimbotSection, "FOV Size", 0, 1000, Config.Get("Aimbot_FOVSize"), function(v) Config.Set("Aimbot_FOVSize", v) end, 10)
+        C.Slider(aimbotSection, "Smooth Value", 0, 20, Config.Get("Aimbot_SmoothValue"), function(v) Config.Set("Aimbot_SmoothValue", v) end, 11)
 
-        -- Triggerbot Section
-        GUI.Components.Section(page, "Triggerbot", 11)
-        GUI.Components.Toggle(page, "Enabled", Config.Get("Triggerbot_Enabled"), function(v) Config.Set("Triggerbot_Enabled", v) end, 12)
-        GUI.Components.Toggle(page, "Team Check", Config.Get("Triggerbot_TeamCheck"), function(v) Config.Set("Triggerbot_TeamCheck", v) end, 13)
-        GUI.Components.Slider(page, "Chance %", 1, 100, Config.Get("Triggerbot_Chance"), function(v) Config.Set("Triggerbot_Chance", v) end, 14)
-        GUI.Components.Slider(page, "Delay", 0, 50, Config.Get("Triggerbot_Delay"), function(v) Config.Set("Triggerbot_Delay", v) end, 15)
+        -- Auto-expand/collapse based on enabled state
+        local aimbotEnabled = Config.Get("Aimbot_Enabled") or false
+        setAimbotOpen(aimbotEnabled)
 
-        -- Silent Aim Section
-        GUI.Components.Section(page, "Silent Aim", 16)
-        GUI.Components.Toggle(page, "Enabled", Config.Get("SilentAim_Enabled"), function(v) Config.Set("SilentAim_Enabled", v) end, 17)
-        GUI.Components.Toggle(page, "Wall Check", Config.Get("SilentAim_WallCheck"), function(v) Config.Set("SilentAim_WallCheck", v) end, 18)
-        GUI.Components.Toggle(page, "Team Check", Config.Get("SilentAim_TeamCheck"), function(v) Config.Set("SilentAim_TeamCheck", v) end, 19)
-        GUI.Components.Toggle(page, "Use FOV", Config.Get("SilentAim_UseFOV"), function(v) Config.Set("SilentAim_UseFOV", v) end, 20)
-        GUI.Components.Slider(page, "FOV Size", 50, 1000, Config.Get("SilentAim_FOVSize"), function(v) Config.Set("SilentAim_FOVSize", v) end, 21)
-        GUI.Components.Slider(page, "Hitchance %", 0, 100, Config.Get("SilentAim_Hitchance"), function(v) Config.Set("SilentAim_Hitchance", v) end, 22)
-        GUI.Components.Dropdown(page, "Hit Part", {"Head", "HumanoidRootPart"}, Config.Get("SilentAim_HitPart"), function(v) Config.Set("SilentAim_HitPart", v) end, 23)
+        -- Hook enabled toggle to expand/collapse
+        local aimbotToggle = aimbotSection:FindFirstChildWhichIsA("Frame")
+        -- We'll use a simpler approach: check on update
 
-        -- Ragebot Section
-        GUI.Components.Section(page, "Ragebot", 24)
-        GUI.Components.Toggle(page, "Enabled", Config.Get("Ragebot_Enabled"), function(v) Config.Set("Ragebot_Enabled", v) end, 25)
+        -- ========================================
+        -- SILENT AIM MASTER SECTION
+        -- ========================================
+        local silentSection, setSilentOpen = C.MasterSection(page, "Silent Aim", 20, Config.Get("SilentAim_Enabled") or false)
+
+        C.Toggle(silentSection, "Enabled", Config.Get("SilentAim_Enabled"), function(v) Config.Set("SilentAim_Enabled", v) end, 21)
+        C.Toggle(silentSection, "Wall Check", Config.Get("SilentAim_WallCheck"), function(v) Config.Set("SilentAim_WallCheck", v) end, 22)
+        C.Toggle(silentSection, "Team Check", Config.Get("SilentAim_TeamCheck"), function(v) Config.Set("SilentAim_TeamCheck", v) end, 23)
+        C.Toggle(silentSection, "Use FOV", Config.Get("SilentAim_UseFOV"), function(v) Config.Set("SilentAim_UseFOV", v) end, 24)
+        C.Slider(silentSection, "FOV Size", 50, 1000, Config.Get("SilentAim_FOVSize"), function(v) Config.Set("SilentAim_FOVSize", v) end, 25)
+        C.Slider(silentSection, "Hitchance %", 0, 100, Config.Get("SilentAim_Hitchance"), function(v) Config.Set("SilentAim_Hitchance", v) end, 26)
+        C.Dropdown(silentSection, "Hit Part", {"Head", "HumanoidRootPart"}, Config.Get("SilentAim_HitPart"), function(v) Config.Set("SilentAim_HitPart", v) end, 27)
+
+        setSilentOpen(Config.Get("SilentAim_Enabled") or false)
+
+        -- ========================================
+        -- TRIGGERBOT MASTER SECTION
+        -- ========================================
+        local triggerSection, setTriggerOpen = C.MasterSection(page, "Triggerbot", 40, Config.Get("Triggerbot_Enabled") or false)
+
+        C.Toggle(triggerSection, "Enabled", Config.Get("Triggerbot_Enabled"), function(v) Config.Set("Triggerbot_Enabled", v) end, 41)
+        C.Toggle(triggerSection, "Team Check", Config.Get("Triggerbot_TeamCheck"), function(v) Config.Set("Triggerbot_TeamCheck", v) end, 42)
+        C.Slider(triggerSection, "Chance %", 1, 100, Config.Get("Triggerbot_Chance"), function(v) Config.Set("Triggerbot_Chance", v) end, 43)
+        C.Slider(triggerSection, "Delay", 0, 50, Config.Get("Triggerbot_Delay"), function(v) Config.Set("Triggerbot_Delay", v) end, 44)
+
+        setTriggerOpen(Config.Get("Triggerbot_Enabled") or false)
+
+        -- ========================================
+        -- RAGEBOT MASTER SECTION
+        -- ========================================
+        local rageSection, setRageOpen = C.MasterSection(page, "Ragebot", 60, Config.Get("Ragebot_Enabled") or false)
+
+        C.Toggle(rageSection, "Enabled", Config.Get("Ragebot_Enabled"), function(v) Config.Set("Ragebot_Enabled", v) end, 61)
+
+        setRageOpen(Config.Get("Ragebot_Enabled") or false)
     end
 
     print("[rivals] Combat module initialized.")

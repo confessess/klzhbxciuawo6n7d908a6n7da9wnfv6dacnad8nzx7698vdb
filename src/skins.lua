@@ -1,5 +1,6 @@
 -- ============================================================
 -- Rivals Modular -- Skins (Correct mappings from user data)
+-- Master Section UI: Each header toggles its own module
 -- ============================================================
 
 local Skins = {}
@@ -58,7 +59,6 @@ local CORRECT_SKINS = {
     ["Warper"] = {"Bubbler", "Electropunk Warper", "Frost Warper", "Glitter Warper", "Arcane Warper", "Experiment W4", "Hotel Bell", "Glorious Warper"},
     ["Warpstone"] = {"Cyber Warpstone", "Warpbone", "Electropunk Warpstone", "Unstable Warpstone", "Warp Juice", "Teleport Disc", "Warpstar", "Warpeye", "Glorious Warpstone"},
 }
-
 
 -- ALL 336 WRAPS from game
 local ALL_WRAPS = {
@@ -207,7 +207,6 @@ local function applySkin(weaponName, skinName)
 
         saveOriginal(weaponName)
 
-        -- Store existing joints before clearing (including joints inside parts)
         local existingJoints = {}
         for _, child in ipairs(weapon:GetDescendants()) do
             if child:IsA("Motor6D") or child:IsA("Weld") or child:IsA("WeldConstraint") then
@@ -222,7 +221,6 @@ local function applySkin(weaponName, skinName)
             end
         end
 
-        -- Also store joints that are children of parts
         for _, part in ipairs(weapon:GetChildren()) do
             if part:IsA("BasePart") then
                 for _, child in ipairs(part:GetChildren()) do
@@ -245,7 +243,6 @@ local function applySkin(weaponName, skinName)
             child:Clone().Parent = weapon
         end
 
-        -- Restore joints if skin doesn't have them
         local hasJoints = false
         for _, child in ipairs(weapon:GetDescendants()) do
             if child:IsA("Motor6D") or child:IsA("Weld") then
@@ -370,7 +367,6 @@ local function startPreviewRotation()
     end)
 end
 
-
 -- ============================================================
 -- Wrap Changer
 -- ============================================================
@@ -395,15 +391,13 @@ local function applyWrapToModel(targetWeapon, wrapNameToApply)
         debugPrint("No target weapon")
         return 0 
     end
-    
-    -- find the weapon's ItemVisual (actual gun parts, not arms)
+
     local itemVisual = targetWeapon:FindFirstChild("ItemVisual")
     if not itemVisual then
         debugPrint("No ItemVisual found in " .. targetWeapon.Name)
         return 0
     end
-    
-    -- find invisible parts
+
     local invisParts = {}
     for _, desc in ipairs(itemVisual:GetDescendants()) do
         if desc:IsA("BasePart") and desc.Transparency == 1 then
@@ -418,7 +412,6 @@ local function applyWrapToModel(targetWeapon, wrapNameToApply)
         return false
     end
 
-    -- clear old textures from weapon only
     local cleared = 0
     for _, desc in ipairs(itemVisual:GetDescendants()) do
         if desc:IsA("BasePart") then
@@ -432,17 +425,15 @@ local function applyWrapToModel(targetWeapon, wrapNameToApply)
     end
     debugPrint("Cleared " .. cleared .. " old textures")
 
-    -- apply new wrap to weapon only
     local applied = 0
     if wrapNameToApply ~= "None" and wrapNameToApply ~= "none" then
-        -- try multiple paths to find wrap
         local wrapFolder = nil
         local paths = {
             LocalPlayer.PlayerScripts.Assets.WrapTextures,
             LocalPlayer.PlayerScripts.Assets:FindFirstChild("WrapTextures"),
             game:GetService("ReplicatedStorage"):FindFirstChild("WrapTextures"),
         }
-        
+
         for _, path in ipairs(paths) do
             if path then
                 wrapFolder = path:FindFirstChild(wrapNameToApply)
@@ -452,7 +443,7 @@ local function applyWrapToModel(targetWeapon, wrapNameToApply)
                 end
             end
         end
-        
+
         if wrapFolder then
             local texCount = 0
             for _, tex in ipairs(wrapFolder:GetChildren()) do
@@ -484,7 +475,6 @@ local function applyWrap(weaponName, wrapName)
     end
 
     local ok, err = pcall(function()
-        -- apply to template (for future equips)
         local folder = getWeaponsFolder()
         if folder then
             local template = folder:FindFirstChild(weaponName)
@@ -494,7 +484,6 @@ local function applyWrap(weaponName, wrapName)
             end
         end
 
-        -- apply to active viewmodel (for right now)
         local vmFolder = workspace:FindFirstChild("ViewModels")
         if vmFolder then
             local fp = vmFolder:FindFirstChild("FirstPerson")
@@ -560,9 +549,14 @@ function Skins.Init(deps)
 
     local page = GUI.GetPage and GUI.GetPage("Skins")
     if page then
-        GUI.Components.Section(page, "Skin Changer", 1)
+        local C = GUI.Components
 
-        GUI.Components.Toggle(page, "Use Any Skin (GLITCHY)", glitchyMode, function(v)
+        -- ========================================
+        -- SKIN CHANGER MASTER SECTION
+        -- ========================================
+        local skinSection, setSkinOpen = C.MasterSection(page, "Skin Changer", 1, false)
+
+        C.Toggle(skinSection, "Use Any Skin (GLITCHY)", glitchyMode, function(v)
             glitchyMode = v
             if selectedWeapon ~= "None" then
                 skinOptions = getSkinsForWeapon(selectedWeapon)
@@ -570,7 +564,7 @@ function Skins.Init(deps)
             end
         end, 2)
 
-        GUI.Components.Dropdown(page, "Weapon", WEAPON_LIST, selectedWeapon, function(v)
+        C.Dropdown(skinSection, "Weapon", WEAPON_LIST, selectedWeapon, function(v)
             selectedWeapon = v
             if v ~= "None" then
                 skinOptions = getSkinsForWeapon(v)
@@ -583,13 +577,11 @@ function Skins.Init(deps)
             end
         end, 3)
 
-        GUI.Components.Dropdown(page, "Skin", function() return skinOptions end, selectedSkin, function(v)
+        C.Dropdown(skinSection, "Skin", function() return skinOptions end, selectedSkin, function(v)
             selectedSkin = v
             debugPrint("Skin selected: " .. tostring(v))
             if selectedWeapon ~= "None" and v ~= "None" then
-                -- Update preview first
                 updatePreview(selectedWeapon, v)
-                -- Then apply
                 local success = applySkin(selectedWeapon, v)
                 if success then
                     saveSkins()
@@ -597,7 +589,7 @@ function Skins.Init(deps)
             end
         end, 4)
 
-        GUI.Components.Button(page, "Reset Weapon", function()
+        C.Button(skinSection, "Reset Weapon", function()
             if selectedWeapon ~= "None" then
                 resetWeapon(selectedWeapon)
                 saveSkins()
@@ -605,22 +597,26 @@ function Skins.Init(deps)
             end
         end, 5, true)
 
-        GUI.Components.Button(page, "Reset All", function()
+        C.Button(skinSection, "Reset All", function()
             for weapon, _ in pairs(currentSkins) do
                 resetWeapon(weapon)
             end
             saveSkins()
         end, 6, true)
 
-        -- Wrap Changer Section
-        GUI.Components.Section(page, "Wrap Changer", 7)
+        setSkinOpen(false)
 
-        GUI.Components.Dropdown(page, "Weapon", getWrapWeapons(), selectedWrapWeapon, function(v)
+        -- ========================================
+        -- WRAP CHANGER MASTER SECTION
+        -- ========================================
+        local wrapSection, setWrapOpen = C.MasterSection(page, "Wrap Changer", 10, false)
+
+        C.Dropdown(wrapSection, "Weapon", getWrapWeapons(), selectedWrapWeapon, function(v)
             print("[WRAP GUI] Selected wrap weapon: " .. tostring(v))
             selectedWrapWeapon = v
-        end, 8)
+        end, 11)
 
-        GUI.Components.Dropdown(page, "Wrap", ALL_WRAPS, selectedWrap, function(v)
+        C.Dropdown(wrapSection, "Wrap", ALL_WRAPS, selectedWrap, function(v)
             print("[WRAP GUI] Selected wrap: " .. tostring(v))
             print("[WRAP GUI] Selected weapon: " .. tostring(selectedWrapWeapon))
             selectedWrap = v
@@ -632,22 +628,24 @@ function Skins.Init(deps)
             else
                 print("[WRAP GUI] Skipped - weapon or wrap is None")
             end
-        end, 9)
+        end, 12)
 
-        GUI.Components.Button(page, "Clear Wrap", function()
+        C.Button(wrapSection, "Clear Wrap", function()
             if selectedWrapWeapon ~= "None" then
                 applyWrap(selectedWrapWeapon, "None")
                 saveWraps()
             end
-        end, 10, true)
+        end, 13, true)
 
-        GUI.Components.Button(page, "Clear All Wraps", function()
+        C.Button(wrapSection, "Clear All Wraps", function()
             for weapon, _ in pairs(wrapConfig) do
                 applyWrap(weapon, "None")
             end
             wrapConfig = {}
             saveWraps()
-        end, 11, true)
+        end, 14, true)
+
+        setWrapOpen(false)
     end
 
     print("[rivals] Skins module initialized.")

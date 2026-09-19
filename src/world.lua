@@ -1,6 +1,7 @@
 -- ============================================================
 -- Rivals Modular -- World
 -- Lighting, skybox, fog, bloom, color correction
+-- Master Section UI: Each header toggles its own module
 -- ============================================================
 
 local World = {}
@@ -107,7 +108,6 @@ local SKYBOX_LIST = {
 local function applySkybox(name)
     currentSkybox = name
 
-    -- Remove existing skyboxes
     for _, child in ipairs(Lighting:GetChildren()) do
         if child:IsA("Sky") then
             child:Destroy()
@@ -212,17 +212,48 @@ function World.Init(deps)
         applySkybox(Config.Get("World_Skybox") or "Default")
     end)
 
-    -- Register GUI
-    -- Register GUI (Misc tab)
+    -- Register GUI (Misc tab) with Master Sections
     local page = GUI.GetPage and GUI.GetPage("Misc")
     if page then
-        GUI.Components.Section(page, "World", 30)
-        GUI.Components.Toggle(page, "Color Correction", Config.Get("World_ColorCorrection"), function(v) Config.Set("World_ColorCorrection", v) updateLighting() end, 31)
-        GUI.Components.Slider(page, "Contrast", -10, 10, (Config.Get("World_Contrast") or 0) * 10, function(v) Config.Set("World_Contrast", v / 10) updateLighting() end, 32)
-        GUI.Components.Slider(page, "Saturation", -10, 10, (Config.Get("World_Saturation") or 0) * 10, function(v) Config.Set("World_Saturation", v / 10) updateLighting() end, 33)
-        GUI.Components.Toggle(page, "Fullbright", Config.Get("World_Fullbright"), function(v) Config.Set("World_Fullbright", v) updateLighting() end, 34)
-        GUI.Components.Toggle(page, "Bloom", Config.Get("World_BloomEnabled"), function(v) Config.Set("World_BloomEnabled", v) updateLighting() end, 35)
-        GUI.Components.Dropdown(page, "Skybox", {"Default", "Neptune", "Nebula", "Vaporwave"}, Config.Get("World_Skybox"), function(v) Config.Set("World_Skybox", v) applySkybox(v) end, 36)
+        local C = GUI.Components
+
+        -- ========================================
+        -- COLOR CORRECTION MASTER SECTION
+        -- ========================================
+        local ccSection, setCcOpen = C.MasterSection(page, "Color Correction", 40, Config.Get("World_ColorCorrection") or false)
+
+        C.Toggle(ccSection, "Enabled", Config.Get("World_ColorCorrection"), function(v) Config.Set("World_ColorCorrection", v) updateLighting() end, 41)
+        C.Slider(ccSection, "Contrast", -10, 10, (Config.Get("World_Contrast") or 0) * 10, function(v) Config.Set("World_Contrast", v / 10) updateLighting() end, 42)
+        C.Slider(ccSection, "Saturation", -10, 10, (Config.Get("World_Saturation") or 0) * 10, function(v) Config.Set("World_Saturation", v / 10) updateLighting() end, 43)
+
+        setCcOpen(Config.Get("World_ColorCorrection") or false)
+
+        -- ========================================
+        -- FULLBRIGHT MASTER SECTION
+        -- ========================================
+        local fbSection, setFbOpen = C.MasterSection(page, "Fullbright", 50, Config.Get("World_Fullbright") or false)
+
+        C.Toggle(fbSection, "Enabled", Config.Get("World_Fullbright"), function(v) Config.Set("World_Fullbright", v) updateLighting() end, 51)
+
+        setFbOpen(Config.Get("World_Fullbright") or false)
+
+        -- ========================================
+        -- BLOOM MASTER SECTION
+        -- ========================================
+        local bloomSection, setBloomOpen = C.MasterSection(page, "Bloom", 60, Config.Get("World_BloomEnabled") or false)
+
+        C.Toggle(bloomSection, "Enabled", Config.Get("World_BloomEnabled"), function(v) Config.Set("World_BloomEnabled", v) updateLighting() end, 61)
+
+        setBloomOpen(Config.Get("World_BloomEnabled") or false)
+
+        -- ========================================
+        -- SKYBOX MASTER SECTION
+        -- ========================================
+        local skySection, setSkyOpen = C.MasterSection(page, "Skybox", 70, (Config.Get("World_Skybox") or "Default") ~= "Default")
+
+        C.Dropdown(skySection, "Skybox", SKYBOX_LIST, Config.Get("World_Skybox"), function(v) Config.Set("World_Skybox", v) applySkybox(v) end, 71)
+
+        setSkyOpen((Config.Get("World_Skybox") or "Default") ~= "Default")
     end
 
     print("[rivals] World module initialized.")
