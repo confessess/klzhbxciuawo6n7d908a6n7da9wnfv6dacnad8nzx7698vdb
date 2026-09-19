@@ -455,6 +455,98 @@ local function UpdateAuras()
 end
 
 -- ============================================================
+-- CUSTOM CHAMS STYLES
+-- ============================================================
+
+local function ApplyCustomChams(character, data)
+    if not Visuals.Settings.ChamsStyle.Enabled then
+        -- Reset to normal if disabled
+        if data.highlight then
+            data.highlight.FillTransparency = 0.5
+            data.highlight.OutlineTransparency = 0
+            data.highlight.FillColor = Visuals.Settings.ESP.ChamsFillColor
+            data.highlight.OutlineColor = Visuals.Settings.ESP.ChamsOutlineColor
+        end
+        return
+    end
+
+    local style = Visuals.Settings.ChamsStyle.Style
+    local color = Visuals.Settings.ChamsStyle.Color
+    local outlineColor = Visuals.Settings.ChamsStyle.OutlineColor
+    local glow = Visuals.Settings.ChamsStyle.GlowIntensity
+    local scanSpeed = Visuals.Settings.ChamsStyle.ScanSpeed
+
+    if not data.highlight then return end
+
+    if style == "Hologram" then
+        -- Hologram: semi-transparent with bright outline
+        data.highlight.FillColor = color
+        data.highlight.OutlineColor = outlineColor
+        data.highlight.FillTransparency = 0.7
+        data.highlight.OutlineTransparency = 0
+
+        -- Add scan line effect via billboard
+        if not data.scanLine then
+            local scanLine = Instance.new("Frame")
+            scanLine.Name = "ScanLine"
+            scanLine.Size = UDim2.new(1, 0, 0, 2)
+            scanLine.BackgroundColor3 = outlineColor
+            scanLine.BackgroundTransparency = 0.3
+            scanLine.BorderSizePixel = 0
+            scanLine.Parent = data.billboard
+            data.scanLine = scanLine
+        end
+
+        -- Animate scan line
+        if data.scanLine then
+            data.scanTime = (data.scanTime or 0) + scanSpeed * 0.01
+            local yPos = math.sin(data.scanTime) * 20
+            data.scanLine.Position = UDim2.new(0, 0, 0.5 + yPos/100, 0)
+            data.scanLine.BackgroundTransparency = 0.3 + math.sin(data.scanTime * 2) * 0.2
+        end
+
+    elseif style == "Neon" then
+        -- Neon: bright glow effect
+        data.highlight.FillColor = color
+        data.highlight.OutlineColor = Color3.new(1, 1, 1)
+        data.highlight.FillTransparency = 0.3
+        data.highlight.OutlineTransparency = 0
+
+        -- Remove scan line if exists
+        if data.scanLine then
+            data.scanLine:Destroy()
+            data.scanLine = nil
+        end
+
+    elseif style == "Ghost" then
+        -- Ghost: very transparent, ethereal
+        data.highlight.FillColor = color
+        data.highlight.OutlineColor = outlineColor
+        data.highlight.FillTransparency = 0.9
+        data.highlight.OutlineTransparency = 0.5
+
+        -- Remove scan line if exists
+        if data.scanLine then
+            data.scanLine:Destroy()
+            data.scanLine = nil
+        end
+
+    elseif style == "Cyber" then
+        -- Cyber: pulsing neon with grid effect
+        data.highlight.FillColor = color
+        data.highlight.OutlineColor = outlineColor
+        data.highlight.FillTransparency = 0.4 + math.sin(tick() * scanSpeed) * 0.2
+        data.highlight.OutlineTransparency = 0
+
+        -- Remove scan line if exists
+        if data.scanLine then
+            data.scanLine:Destroy()
+            data.scanLine = nil
+        end
+    end
+end
+
+-- ============================================================
 -- ARM CHAMS
 -- ============================================================
 

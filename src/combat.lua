@@ -19,9 +19,36 @@ local triggerbotLastClick = 0
 local aimbotFOVCircle = nil
 local silentAimFOVCircle = nil
 
--- Keybind
-local aimbotKeybind = Enum.UserInputType.MouseButton2
+-- Keybind (nil = no keybind, can be mouse button or key)
+local aimbotKeybind = nil
 local aimbotKeyDown = false
+
+-- Helper to check if keybind is pressed
+local function isKeybindPressed()
+    if not aimbotKeybind then return false end
+
+    -- Check if it's a mouse button
+    if typeof(aimbotKeybind) == "EnumItem" then
+        if aimbotKeybind.EnumType == Enum.UserInputType then
+            return UserInputService:IsMouseButtonPressed(aimbotKeybind)
+        elseif aimbotKeybind.EnumType == Enum.KeyCode then
+            return UserInputService:IsKeyDown(aimbotKeybind)
+        end
+    end
+    return false
+end
+
+-- Helper to format keybind for display
+local function formatKeybind(kb)
+    if not kb then return "None" end
+    if typeof(kb) == "EnumItem" then
+        local str = tostring(kb)
+        -- Extract just the name part
+        local name = str:match("%.(%w+)$") or str
+        return name
+    end
+    return tostring(kb)
+end
 
 -- ------------------------------------------------------------
 -- Target selection
@@ -217,14 +244,7 @@ local function updateAimbot()
     end
 
     -- Check keybind
-    local shouldAim = false
-    if aimbotKeybind == Enum.UserInputType.MouseButton1
-        or aimbotKeybind == Enum.UserInputType.MouseButton2
-        or aimbotKeybind == Enum.UserInputType.MouseButton3 then
-        shouldAim = UserInputService:IsMouseButtonPressed(aimbotKeybind)
-    else
-        shouldAim = UserInputService:IsKeyDown(aimbotKeybind)
-    end
+    local shouldAim = isKeybindPressed()
 
     if not shouldAim then
         if not Config.Get("Aimbot_StickyAim") then
@@ -389,18 +409,37 @@ function Combat.Init(deps)
     -- Input handling
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
-        if input.UserInputType == aimbotKeybind then
-            aimbotKeyDown = true
+
+        -- Check aimbot keybind
+        if aimbotKeybind then
+            if typeof(aimbotKeybind) == "EnumItem" then
+                if aimbotKeybind.EnumType == Enum.UserInputType and input.UserInputType == aimbotKeybind then
+                    aimbotKeyDown = true
+                elseif aimbotKeybind.EnumType == Enum.KeyCode and input.KeyCode == aimbotKeybind then
+                    aimbotKeyDown = true
+                end
+            end
         end
+
+        -- Silent aim on click
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             onButton1Down()
         end
     end)
 
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == aimbotKeybind then
-            aimbotKeyDown = false
+        -- Check aimbot keybind
+        if aimbotKeybind then
+            if typeof(aimbotKeybind) == "EnumItem" then
+                if aimbotKeybind.EnumType == Enum.UserInputType and input.UserInputType == aimbotKeybind then
+                    aimbotKeyDown = false
+                elseif aimbotKeybind.EnumType == Enum.KeyCode and input.KeyCode == aimbotKeybind then
+                    aimbotKeyDown = false
+                end
+            end
         end
+
+        -- Silent aim on release
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             onButton1Up()
         end
@@ -416,14 +455,100 @@ function Combat.Init(deps)
         -- Aimbot Section
         GUI.Components.Section(page, "Aimbot", 1)
         GUI.Components.Toggle(page, "Enabled", Config.Get("Aimbot_Enabled"), function(v) Config.Set("Aimbot_Enabled", v) end, 2)
-        GUI.Components.Toggle(page, "Wall Check", Config.Get("Aimbot_WallCheck"), function(v) Config.Set("Aimbot_WallCheck", v) end, 3)
-        GUI.Components.Toggle(page, "Team Check", Config.Get("Aimbot_TeamCheck"), function(v) Config.Set("Aimbot_TeamCheck", v) end, 4)
-        GUI.Components.Toggle(page, "Smoothness", Config.Get("Aimbot_Smoothness"), function(v) Config.Set("Aimbot_Smoothness", v) end, 5)
-        GUI.Components.Toggle(page, "Prediction", Config.Get("Aimbot_Prediction"), function(v) Config.Set("Aimbot_Prediction", v) end, 6)
-        GUI.Components.Dropdown(page, "Aim Part", {"Head", "HumanoidRootPart"}, Config.Get("Aimbot_AimPart"), function(v) Config.Set("Aimbot_AimPart", v) end, 7)
-        GUI.Components.Toggle(page, "Show FOV", Config.Get("Aimbot_ShowFOV"), function(v) Config.Set("Aimbot_ShowFOV", v) end, 8)
-        GUI.Components.Slider(page, "FOV Size", 0, 1000, Config.Get("Aimbot_FOVSize"), function(v) Config.Set("Aimbot_FOVSize", v) end, 9)
-        GUI.Components.Slider(page, "Smooth Value", 0, 20, Config.Get("Aimbot_SmoothValue"), function(v) Config.Set("Aimbot_SmoothValue", v) end, 10)
+
+        -- Hotkey with clear button
+        local hotkeyFrame = Instance.new("Frame")
+        hotkeyFrame.Size = UDim2.new(1, 0, 0, 32)
+        hotkeyFrame.BackgroundTransparency = 1
+        hotkeyFrame.LayoutOrder = 3
+        hotkeyFrame.Parent = page
+
+        local hotkeyLbl = Instance.new("TextLabel")
+        hotkeyLbl.Size = UDim2.new(0.4, 0, 1, 0)
+        hotkeyLbl.BackgroundTransparency = 1
+        hotkeyLbl.Text = "Hotkey"
+        hotkeyLbl.TextColor3 = Color3.fromRGB(220, 220, 235)
+        hotkeyLbl.Font = Enum.Font.GothamMedium
+        hotkeyLbl.TextSize = 13
+        hotkeyLbl.TextXAlignment = Enum.TextXAlignment.Left
+        hotkeyLbl.Parent = hotkeyFrame
+
+        local hotkeyBtn = Instance.new("TextButton")
+        hotkeyBtn.Size = UDim2.new(0.35, -30, 0, 26)
+        hotkeyBtn.Position = UDim2.new(0.45, 0, 0.5, -13)
+        hotkeyBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+        hotkeyBtn.BorderSizePixel = 0
+        hotkeyBtn.Text = formatKeybind(aimbotKeybind)
+        hotkeyBtn.TextColor3 = Color3.fromRGB(80, 140, 255)
+        hotkeyBtn.Font = Enum.Font.GothamBold
+        hotkeyBtn.TextSize = 12
+        hotkeyBtn.AutoButtonColor = false
+        hotkeyBtn.Parent = hotkeyFrame
+
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = hotkeyBtn
+
+        local clearBtn = Instance.new("TextButton")
+        clearBtn.Size = UDim2.fromOffset(24, 24)
+        clearBtn.Position = UDim2.new(1, -24, 0.5, -12)
+        clearBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+        clearBtn.BorderSizePixel = 0
+        clearBtn.Text = "×"
+        clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        clearBtn.Font = Enum.Font.GothamBold
+        clearBtn.TextSize = 14
+        clearBtn.AutoButtonColor = false
+        clearBtn.Parent = hotkeyFrame
+
+        local clearCorner = Instance.new("UICorner")
+        clearCorner.CornerRadius = UDim.new(0, 4)
+        clearCorner.Parent = clearBtn
+
+        -- Hotkey click handler
+        local listening = false
+        hotkeyBtn.MouseButton1Click:Connect(function()
+            if listening then return end
+            listening = true
+            hotkeyBtn.Text = "..."
+
+            local conn
+            conn = UserInputService.InputBegan:Connect(function(input, gp)
+                if gp then return end
+
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    -- Key pressed
+                    aimbotKeybind = input.KeyCode
+                    hotkeyBtn.Text = formatKeybind(input.KeyCode)
+                    listening = false
+                    conn:Disconnect()
+                elseif input.UserInputType == Enum.UserInputType.MouseButton1
+                    or input.UserInputType == Enum.UserInputType.MouseButton2
+                    or input.UserInputType == Enum.UserInputType.MouseButton3 then
+                    -- Mouse button pressed
+                    aimbotKeybind = input.UserInputType
+                    hotkeyBtn.Text = formatKeybind(input.UserInputType)
+                    listening = false
+                    conn:Disconnect()
+                end
+            end)
+        end)
+
+        -- Clear button
+        clearBtn.MouseButton1Click:Connect(function()
+            aimbotKeybind = nil
+            hotkeyBtn.Text = "None"
+            aimbotKeyDown = false
+        end)
+
+        GUI.Components.Toggle(page, "Wall Check", Config.Get("Aimbot_WallCheck"), function(v) Config.Set("Aimbot_WallCheck", v) end, 4)
+        GUI.Components.Toggle(page, "Team Check", Config.Get("Aimbot_TeamCheck"), function(v) Config.Set("Aimbot_TeamCheck", v) end, 5)
+        GUI.Components.Toggle(page, "Smoothness", Config.Get("Aimbot_Smoothness"), function(v) Config.Set("Aimbot_Smoothness", v) end, 6)
+        GUI.Components.Toggle(page, "Prediction", Config.Get("Aimbot_Prediction"), function(v) Config.Set("Aimbot_Prediction", v) end, 7)
+        GUI.Components.Dropdown(page, "Aim Part", {"Head", "HumanoidRootPart"}, Config.Get("Aimbot_AimPart"), function(v) Config.Set("Aimbot_AimPart", v) end, 8)
+        GUI.Components.Toggle(page, "Show FOV", Config.Get("Aimbot_ShowFOV"), function(v) Config.Set("Aimbot_ShowFOV", v) end, 9)
+        GUI.Components.Slider(page, "FOV Size", 0, 1000, Config.Get("Aimbot_FOVSize"), function(v) Config.Set("Aimbot_FOVSize", v) end, 10)
+        GUI.Components.Slider(page, "Smooth Value", 0, 20, Config.Get("Aimbot_SmoothValue"), function(v) Config.Set("Aimbot_SmoothValue", v) end, 11)
 
         -- Triggerbot Section
         GUI.Components.Section(page, "Triggerbot", 11)
