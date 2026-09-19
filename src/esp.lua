@@ -821,19 +821,15 @@ function Visuals.Init(deps)
         print("[Visuals] No GUI module")
         return 
     end
-    print("[Visuals] GUI module found")
 
     local page = GUI.GetPage and GUI.GetPage("Visuals")
     if not page then 
-        print("[Visuals] No Visuals page found!")
-        print("[Visuals] Available pages:", GUI.Pages and "exists" or "nil")
+        print("[Visuals] No Visuals page")
         return 
     end
-    print("[Visuals] Visuals page found")
 
     local C = GUI.Components
     local S = Visuals.Settings
-    print("[Visuals] Got components, registering controls...")
 
     -- ESP Section (Collapsible)
     local espSection, setEspOpen = C.CollapsibleSection(page, "ESP", 1, S.ESP.Enabled)
@@ -903,8 +899,9 @@ function Visuals.Init(deps)
     end, 41)
     C.Dropdown(weatherSection, "Type", {"Rain", "Snow", "Storm"}, S.Weather.Type, function(v) S.Weather.Type = v end, 42)
     C.Slider(weatherSection, "Intensity", 10, 200, S.Weather.Intensity, function(v) S.Weather.Intensity = v end, 43)
-end
 
+    print("[Visuals] GUI registered")
+end
 
 function Visuals.Cleanup()
     for character, data in pairs(ESPObjects) do
