@@ -12,30 +12,46 @@ local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 
--- Settings
+-- Settings (integrated with Config)
+local Config
+
+local function GetConfig(key, default)
+    if Config and Config.Get then
+        local val = Config.Get(key)
+        if val ~= nil then return val end
+    end
+    return default
+end
+
+local function SetConfig(key, value)
+    if Config and Config.Set then
+        Config.Set(key, value)
+    end
+end
+
 Visuals.Settings = {
     -- Master
     Enabled = false,
 
     -- ESP
     ESP = {
-        Enabled = false,
-        TeamCheck = true,
-        MaxDistance = 500,
-        Chams = true,
+        Enabled = GetConfig("ESP_Enabled", false),
+        TeamCheck = GetConfig("ESP_TeamCheck", true),
+        MaxDistance = GetConfig("ESP_MaxDistance", 500),
+        Chams = GetConfig("ESP_Highlight", true),
         ChamsFillColor = Color3.fromRGB(255, 60, 60),
         ChamsOutlineColor = Color3.fromRGB(255, 255, 255),
-        Boxes = false,
-        Names = true,
-        Health = true,
-        Distance = true,
+        Boxes = GetConfig("ESP_Boxes", false),
+        Names = GetConfig("ESP_Name", true),
+        Health = GetConfig("ESP_HealthBar", true),
+        Distance = GetConfig("ESP_Studs", true),
         Tracers = false,
     },
 
     -- Player Auras
     Aura = {
         Enabled = false,
-        Color = Color3.fromRGB(138, 43, 226), -- Purple
+        Color = Color3.fromRGB(138, 43, 226),
         Size = 5,
         Transparency = 0.7,
         Speed = 2,
@@ -44,7 +60,7 @@ Visuals.Settings = {
     -- Arm Chams
     ArmChams = {
         Enabled = false,
-        Color = Color3.fromRGB(255, 0, 255), -- Magenta
+        Color = Color3.fromRGB(255, 0, 255),
         Material = Enum.Material.Neon,
         Transparency = 0.3,
     },
@@ -68,7 +84,7 @@ Visuals.Settings = {
     -- Weather
     Weather = {
         Enabled = false,
-        Type = "Rain", -- Rain, Snow, Fog, Storm
+        Type = "Rain",
         Intensity = 50,
         Color = Color3.fromRGB(200, 200, 255),
     },
@@ -121,10 +137,10 @@ local function CreateESP(player, character)
     nameLabel.TextSize = 13
     nameLabel.Parent = billboard
 
-    -- Health bar
+    -- Health bar (vertical, on left side)
     local healthBg = Instance.new("Frame")
-    healthBg.Size = UDim2.new(0, 80, 0, 5)
-    healthBg.Position = UDim2.new(0.5, -40, 0, 20)
+    healthBg.Size = UDim2.new(0, 5, 0, 40)
+    healthBg.Position = UDim2.new(0, -10, 0.5, -20)
     healthBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     healthBg.BackgroundTransparency = 0.4
     healthBg.BorderSizePixel = 0
@@ -132,14 +148,16 @@ local function CreateESP(player, character)
 
     local healthFill = Instance.new("Frame")
     healthFill.Size = UDim2.new(1, 0, 1, 0)
+    healthFill.Position = UDim2.new(0, 0, 1, 0)
+    healthFill.AnchorPoint = Vector2.new(0, 1)
     healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
     healthFill.BorderSizePixel = 0
     healthFill.Parent = healthBg
 
-    -- Distance
+    -- Distance (at bottom)
     local distLabel = Instance.new("TextLabel")
     distLabel.Size = UDim2.new(1, 0, 0, 14)
-    distLabel.Position = UDim2.new(0, 0, 0, 28)
+    distLabel.Position = UDim2.new(0, 0, 1, 2)
     distLabel.BackgroundTransparency = 1
     distLabel.Text = ""
     distLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -180,50 +198,63 @@ local function CreateAura(player, character)
     local root = character:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    -- Aura ring
-    local aura = Instance.new("Part")
-    aura.Name = "Aura"
-    aura.Size = Vector3.new(1, 0.1, 1)
-    aura.Anchored = true
-    aura.CanCollide = false
-    aura.Transparency = Visuals.Settings.Aura.Transparency
-    aura.Material = Enum.Material.Neon
-    aura.Color = Visuals.Settings.Aura.Color
-    aura.Shape = Enum.PartType.Cylinder
-    aura.Parent = workspace
+    -- Create attachment for particles
+    local attachment = Instance.new("Attachment")
+    attachment.Name = "AuraAttachment"
+    attachment.Parent = root
+
+    -- Aura particles (rising glow effect)
+    local particles = Instance.new("ParticleEmitter")
+    particles.Name = "AuraParticles"
+    particles.Rate = 50
+    particles.Lifetime = NumberRange.new(0.5, 1)
+    particles.Speed = NumberRange.new(2, 5)
+    particles.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 2),
+        NumberSequenceKeypoint.new(1, 0)
+    })
+    particles.Color = ColorSequence.new(Visuals.Settings.Aura.Color)
+    particles.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.5),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    particles.LightEmission = 1
+    particles.LightInfluence = 0
+    particles.Parent = attachment
 
     -- Point light
     local light = Instance.new("PointLight")
     light.Color = Visuals.Settings.Aura.Color
-    light.Range = Visuals.Settings.Aura.Size
-    light.Brightness = 2
-    light.Parent = aura
+    light.Range = Visuals.Settings.Aura.Size * 2
+    light.Brightness = 3
+    light.Parent = root
 
     AuraObjects[character] = {
         player = player,
         root = root,
-        aura = aura,
+        attachment = attachment,
+        particles = particles,
         light = light,
-        rotation = 0,
     }
 end
 
 local function UpdateAuras()
     for character, data in pairs(AuraObjects) do
-        if not character or not character.Parent then
-            if data.aura then data.aura:Destroy() end
+        if not character or not character.Parent or not data.root or not data.root.Parent then
+            if data.attachment then data.attachment:Destroy() end
             AuraObjects[character] = nil
         elseif Visuals.Settings.Aura.Enabled then
-            data.aura.Transparency = Visuals.Settings.Aura.Transparency
-            data.aura.Color = Visuals.Settings.Aura.Color
-            data.light.Color = Visuals.Settings.Aura.Color
-            data.light.Range = Visuals.Settings.Aura.Size
+            -- Update particle properties
+            data.particles.Color = ColorSequence.new(Visuals.Settings.Aura.Color)
+            data.particles.Rate = Visuals.Settings.Aura.Speed * 25
+            data.particles.Enabled = true
 
-            -- Rotate aura
-            data.rotation = data.rotation + Visuals.Settings.Aura.Speed
-            data.aura.CFrame = CFrame.new(data.root.Position) * CFrame.Angles(0, math.rad(data.rotation), 0)
+            -- Update light
+            data.light.Color = Visuals.Settings.Aura.Color
+            data.light.Range = Visuals.Settings.Aura.Size * 2
+            data.light.Enabled = true
         else
-            data.aura.Transparency = 1
+            data.particles.Enabled = false
             data.light.Enabled = false
         end
     end
@@ -318,22 +349,36 @@ end
 local function CreateWeather()
     if WeatherObjects.particles then return end
 
-    local weatherFolder = Instance.new("Folder")
-    weatherFolder.Name = "Weather"
-    weatherFolder.Parent = workspace
+    -- Create attachment in workspace for particles
+    local weatherPart = Instance.new("Part")
+    weatherPart.Name = "WeatherEmitter"
+    weatherPart.Size = Vector3.new(200, 1, 200)
+    weatherPart.Position = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 50, 0) or Vector3.new(0, 50, 0)
+    weatherPart.Anchored = true
+    weatherPart.CanCollide = false
+    weatherPart.CanQuery = false
+    weatherPart.CanTouch = false
+    weatherPart.Transparency = 1
+    weatherPart.Parent = workspace
 
-    -- Rain/Snow particles
+    local attachment = Instance.new("Attachment")
+    attachment.Parent = weatherPart
+
+    -- Weather particles
     local particles = Instance.new("ParticleEmitter")
+    particles.Name = "WeatherParticles"
     particles.Rate = Visuals.Settings.Weather.Intensity
-    particles.Lifetime = NumberRange.new(2, 4)
-    particles.Speed = NumberRange.new(50, 100)
-    particles.Size = NumberSequence.new(0.1)
+    particles.Lifetime = NumberRange.new(3, 5)
+    particles.Speed = NumberRange.new(30, 50)
+    particles.Size = NumberSequence.new(0.2)
     particles.Color = ColorSequence.new(Visuals.Settings.Weather.Color)
     particles.Transparency = NumberSequence.new(0.3)
-    particles.Parent = weatherFolder
+    particles.LightEmission = 0.5
+    particles.Parent = attachment
 
     WeatherObjects.particles = particles
-    WeatherObjects.folder = weatherFolder
+    WeatherObjects.part = weatherPart
+    WeatherObjects.attachment = attachment
 end
 
 local function UpdateWeather()
@@ -344,6 +389,11 @@ local function UpdateWeather()
 
     CreateWeather()
 
+    -- Move weather with player
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        WeatherObjects.part.Position = LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 50, 0)
+    end
+
     local particles = WeatherObjects.particles
     particles.Enabled = true
     particles.Rate = Visuals.Settings.Weather.Intensity
@@ -351,17 +401,26 @@ local function UpdateWeather()
 
     -- Adjust based on type
     if Visuals.Settings.Weather.Type == "Rain" then
-        particles.Speed = NumberRange.new(100, 150)
+        particles.Speed = NumberRange.new(80, 120)
         particles.Size = NumberSequence.new(0.1)
-        particles.Transparency = NumberSequence.new(0.3)
-    elseif Visuals.Settings.Weather.Type == "Snow" then
-        particles.Speed = NumberRange.new(10, 30)
-        particles.Size = NumberSequence.new(0.3)
-        particles.Transparency = NumberSequence.new(0.5)
-    elseif Visuals.Settings.Weather.Type == "Storm" then
-        particles.Speed = NumberRange.new(150, 200)
-        particles.Size = NumberSequence.new(0.2)
         particles.Transparency = NumberSequence.new(0.2)
+        particles.Lifetime = NumberRange.new(1, 2)
+        particles.Rotation = NumberRange.new(0, 0)
+        particles.RotSpeed = NumberRange.new(0, 0)
+    elseif Visuals.Settings.Weather.Type == "Snow" then
+        particles.Speed = NumberRange.new(10, 20)
+        particles.Size = NumberSequence.new(0.3)
+        particles.Transparency = NumberSequence.new(0.4)
+        particles.Lifetime = NumberRange.new(4, 6)
+        particles.Rotation = NumberRange.new(0, 360)
+        particles.RotSpeed = NumberRange.new(-90, 90)
+    elseif Visuals.Settings.Weather.Type == "Storm" then
+        particles.Speed = NumberRange.new(120, 180)
+        particles.Size = NumberSequence.new(0.15)
+        particles.Transparency = NumberSequence.new(0.15)
+        particles.Lifetime = NumberRange.new(0.5, 1)
+        particles.Rotation = NumberRange.new(0, 0)
+        particles.RotSpeed = NumberRange.new(0, 0)
     end
 end
 
@@ -473,7 +532,7 @@ function Visuals.Update()
                     if data.healthBg then
                         data.healthBg.Visible = S.ESP.Health
                         local pct = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
-                        data.healthFill.Size = UDim2.new(pct, 0, 1, 0)
+                        data.healthFill.Size = UDim2.new(1, 0, pct, 0)
                     end
                     if data.distLabel then
                         data.distLabel.Visible = S.ESP.Distance
@@ -506,6 +565,7 @@ function Visuals.Init(deps)
     print("[Visuals] Init called")
     GUI = deps.GUI
     Core = deps.Core
+    Config = deps.Config
 
     if not GUI then 
         print("[Visuals] No GUI module")
@@ -527,13 +587,34 @@ function Visuals.Init(deps)
 
     -- ESP Section
     C.Section(page, "ESP", 1)
-    C.Toggle(page, "Enabled", false, function(v) S.ESP.Enabled = v end, 2)
-    C.Toggle(page, "Chams", true, function(v) S.ESP.Chams = v end, 3)
-    C.Toggle(page, "Names", true, function(v) S.ESP.Names = v end, 4)
-    C.Toggle(page, "Health", true, function(v) S.ESP.Health = v end, 5)
-    C.Toggle(page, "Distance", true, function(v) S.ESP.Distance = v end, 6)
-    C.Toggle(page, "Team Check", true, function(v) S.ESP.TeamCheck = v end, 7)
-    C.Slider(page, "Max Distance", 100, 2000, 500, function(v) S.ESP.MaxDistance = v end, 8)
+    C.Toggle(page, "Enabled", S.ESP.Enabled, function(v) 
+        S.ESP.Enabled = v 
+        SetConfig("ESP_Enabled", v)
+    end, 2)
+    C.Toggle(page, "Chams", S.ESP.Chams, function(v)
+        S.ESP.Chams = v
+        SetConfig("ESP_Highlight", v)
+    end, 3)
+    C.Toggle(page, "Names", S.ESP.Names, function(v)
+        S.ESP.Names = v
+        SetConfig("ESP_Name", v)
+    end, 4)
+    C.Toggle(page, "Health", S.ESP.Health, function(v)
+        S.ESP.Health = v
+        SetConfig("ESP_HealthBar", v)
+    end, 5)
+    C.Toggle(page, "Distance", S.ESP.Distance, function(v)
+        S.ESP.Distance = v
+        SetConfig("ESP_Studs", v)
+    end, 6)
+    C.Toggle(page, "Team Check", S.ESP.TeamCheck, function(v)
+        S.ESP.TeamCheck = v
+        SetConfig("ESP_TeamCheck", v)
+    end, 7)
+    C.Slider(page, "Max Distance", 100, 2000, S.ESP.MaxDistance, function(v) 
+        S.ESP.MaxDistance = v
+        SetConfig("ESP_MaxDistance", v)
+    end, 8)
 
     -- Player Aura Section
     C.Section(page, "Player Aura", 10)
@@ -569,7 +650,7 @@ function Visuals.Cleanup()
     table.clear(ESPObjects)
 
     for character, data in pairs(AuraObjects) do
-        if data.aura then data.aura:Destroy() end
+        if data.attachment then data.attachment:Destroy() end
     end
     table.clear(AuraObjects)
 

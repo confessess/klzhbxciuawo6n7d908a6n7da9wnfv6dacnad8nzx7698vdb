@@ -32,6 +32,7 @@ local Pages = {}
 local ActiveTab = nil
 local IsOpen = false
 local IsLoading = true
+local MenuKeybind = Enum.KeyCode.RightControl
 
 local function tween(obj, props)
     TweenService:Create(obj, TweenInfo.new(0.15), props):Play()
@@ -726,7 +727,7 @@ local function build()
     UserInputService.InputBegan:Connect(function(input, gp)
         local ok, err = pcall(function()
             if gp then return end
-            if input.KeyCode == Enum.KeyCode.RightControl then
+            if input.KeyCode == MenuKeybind then
                 if IsLoading then return end
                 GUI.ToggleMenu()
             end
@@ -778,9 +779,29 @@ function GUI.Init(deps)
     if settings then
         local C = GUI.Components
 
+        -- Get saved keybind or default
+        local savedKeybind = Enum.KeyCode.RightControl
+        if Config and Config.Get then
+            local saved = Config.Get("MenuKeybind")
+            if saved then
+                local ok, parsed = pcall(function()
+                    return Enum.KeyCode[saved]
+                end)
+                if ok and parsed then
+                    savedKeybind = parsed
+                end
+            end
+        end
+
         C.Section(settings, "Menu", 1)
-        C.Keybind(settings, "Menu Keybind", Enum.KeyCode.RightControl, function(k)
-            print("[GUI] Keybind changed")
+        C.Keybind(settings, "Menu Keybind", savedKeybind, function(k)
+            print("[GUI] Keybind changed to: " .. tostring(k))
+            -- Save to config
+            if Config and Config.Set then
+                Config.Set("MenuKeybind", tostring(k):gsub("Enum.KeyCode.", ""))
+            end
+            -- Update the keybind variable
+            MenuKeybind = k
         end, 2)
 
         C.Section(settings, "Config", 10)
