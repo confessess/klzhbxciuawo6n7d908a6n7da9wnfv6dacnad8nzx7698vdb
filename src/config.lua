@@ -15,24 +15,24 @@ local Defaults = {
 
     -- ESP
     ESP_Enabled         = false,
-    ESP_Highlight       = true,
-    ESP_Name            = true,
-    ESP_Studs           = true,
+    ESP_Highlight       = false,
+    ESP_Name            = false,
+    ESP_Studs           = false,
     ESP_Tracer          = false,
-    ESP_HealthBar       = true,
+    ESP_HealthBar       = false,
     ESP_Boxes           = false,
     ESP_BoxColor        = "#ffffff",
     ESP_BoxFilled       = false,
     ESP_BoxFillColor    = "#ffffff",
     ESP_BoxTransparency = 0.5,
     ESP_MaxDistance     = 500,
-    ESP_TeamCheck       = true,
+    ESP_TeamCheck       = false,
     ESP_TeamColor       = false,
 
     -- Legit Aimbot
     Aimbot_Enabled      = false,
-    Aimbot_WallCheck    = true,
-    Aimbot_TeamCheck    = true,
+    Aimbot_WallCheck    = false,
+    Aimbot_TeamCheck    = false,
     Aimbot_Smoothness   = false,
     Aimbot_Prediction   = false,
     Aimbot_StickyAim    = false,
@@ -46,14 +46,14 @@ local Defaults = {
 
     -- Triggerbot
     Triggerbot_Enabled  = false,
-    Triggerbot_TeamCheck = true,
+    Triggerbot_TeamCheck = false,
     Triggerbot_Chance   = 100,
     Triggerbot_Delay    = 0,
 
     -- Silent Aim
     SilentAim_Enabled   = false,
-    SilentAim_WallCheck = true,
-    SilentAim_TeamCheck = true,
+    SilentAim_WallCheck = false,
+    SilentAim_TeamCheck = false,
     SilentAim_UseFOV    = false,
     SilentAim_FOVSize   = 500,
     SilentAim_FOVColor  = "#ff0000",
