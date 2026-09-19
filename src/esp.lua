@@ -903,6 +903,8 @@ function Visuals.Init(deps)
     end, 41)
     C.Dropdown(weatherSection, "Type", {"Rain", "Snow", "Storm"}, S.Weather.Type, function(v) S.Weather.Type = v end, 42)
     C.Slider(weatherSection, "Intensity", 10, 200, S.Weather.Intensity, function(v) S.Weather.Intensity = v end, 43)
+end
+
 
 function Visuals.Cleanup()
     for character, data in pairs(ESPObjects) do
