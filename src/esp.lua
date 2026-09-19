@@ -38,23 +38,36 @@ Visuals.Settings = {
         Enabled = GetConfig("ESP_Enabled", false),
         TeamCheck = GetConfig("ESP_TeamCheck", true),
         MaxDistance = GetConfig("ESP_MaxDistance", 500),
-        Chams = GetConfig("ESP_Highlight", true),
+        Chams = GetConfig("ESP_Highlight", false),
         ChamsFillColor = Color3.fromRGB(255, 60, 60),
         ChamsOutlineColor = Color3.fromRGB(255, 255, 255),
         Boxes = GetConfig("ESP_Boxes", false),
-        Names = GetConfig("ESP_Name", true),
-        Health = GetConfig("ESP_HealthBar", true),
-        Distance = GetConfig("ESP_Studs", true),
+        Names = GetConfig("ESP_Name", false),
+        Health = GetConfig("ESP_HealthBar", false),
+        Distance = GetConfig("ESP_Studs", false),
         Tracers = false,
     },
 
-    -- Player Auras
+    -- Player Auras (High-Tech)
     Aura = {
         Enabled = false,
-        Color = Color3.fromRGB(138, 43, 226),
+        Type = "Glow", -- Glow, Hexagon, DataStream, EnergyPulse, Hologram, ScanLines
+        Color = Color3.fromRGB(0, 255, 255), -- Cyan
+        SecondaryColor = Color3.fromRGB(255, 0, 255), -- Magenta
         Size = 5,
-        Transparency = 0.7,
         Speed = 2,
+        Intensity = 50,
+        Transparency = 0.5,
+    },
+
+    -- Custom Chams
+    ChamsStyle = {
+        Enabled = false,
+        Style = "Hologram", -- Hologram, Neon, Ghost, Cyber, None
+        Color = Color3.fromRGB(0, 255, 255),
+        OutlineColor = Color3.fromRGB(255, 255, 255),
+        GlowIntensity = 2,
+        ScanSpeed = 2,
     },
 
     -- Arm Chams
@@ -65,21 +78,7 @@ Visuals.Settings = {
         Transparency = 0.3,
     },
 
-    -- Screen FX
-    ScreenFX = {
-        Enabled = false,
-        Vignette = true,
-        VignetteColor = Color3.fromRGB(0, 0, 0),
-        VignetteTransparency = 0.3,
-        ColorCorrection = true,
-        TintColor = Color3.fromRGB(255, 200, 150),
-        Saturation = 0.2,
-        Contrast = 0.1,
-        Bloom = true,
-        BloomIntensity = 0.5,
-        BloomSize = 24,
-        BloomThreshold = 0.8,
-    },
+    -- Screen FX (removed - use World tab instead)
 
     -- Weather
     Weather = {
@@ -198,29 +197,46 @@ local function CreateAura(player, character)
     local root = character:FindFirstChild("HumanoidRootPart")
     if not root then return end
 
-    -- Create attachment for particles
-    local attachment = Instance.new("Attachment")
-    attachment.Name = "AuraAttachment"
-    attachment.Parent = root
+    -- Create folder for aura effects
+    local auraFolder = Instance.new("Folder")
+    auraFolder.Name = "AuraEffects"
+    auraFolder.Parent = character
 
-    -- Aura particles (rising glow effect)
+    -- Create attachments on all body parts
+    local attachments = {}
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            local att = Instance.new("Attachment")
+            att.Name = "AuraAtt"
+            att.Parent = part
+            table.insert(attachments, att)
+        end
+    end
+
+    -- Main particles (will be configured based on type)
     local particles = Instance.new("ParticleEmitter")
     particles.Name = "AuraParticles"
-    particles.Rate = 50
-    particles.Lifetime = NumberRange.new(0.5, 1)
-    particles.Speed = NumberRange.new(2, 5)
+    particles.Rate = Visuals.Settings.Aura.Intensity
+    particles.Lifetime = NumberRange.new(0.5, 1.5)
+    particles.Speed = NumberRange.new(1, 3)
     particles.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 2),
+        NumberSequenceKeypoint.new(0, 1),
         NumberSequenceKeypoint.new(1, 0)
     })
     particles.Color = ColorSequence.new(Visuals.Settings.Aura.Color)
     particles.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.5),
+        NumberSequenceKeypoint.new(0, Visuals.Settings.Aura.Transparency),
         NumberSequenceKeypoint.new(1, 1)
     })
     particles.LightEmission = 1
     particles.LightInfluence = 0
-    particles.Parent = attachment
+    particles.LockedToPart = true
+
+    -- Add to all attachments
+    for _, att in ipairs(attachments) do
+        local clone = particles:Clone()
+        clone.Parent = att
+    end
 
     -- Point light
     local light = Instance.new("PointLight")
@@ -229,33 +245,211 @@ local function CreateAura(player, character)
     light.Brightness = 3
     light.Parent = root
 
+    -- Energy pulse ring (for EnergyPulse type)
+    local pulseRing = Instance.new("Part")
+    pulseRing.Name = "PulseRing"
+    pulseRing.Size = Vector3.new(1, 0.1, 1)
+    pulseRing.Anchored = true
+    pulseRing.CanCollide = false
+    pulseRing.CanQuery = false
+    pulseRing.CanTouch = false
+    pulseRing.Transparency = 1
+    pulseRing.Material = Enum.Material.Neon
+    pulseRing.Shape = Enum.PartType.Cylinder
+    pulseRing.Parent = auraFolder
+
+    -- Scan lines part (for ScanLines type)
+    local scanPart = Instance.new("Part")
+    scanPart.Name = "ScanLines"
+    scanPart.Size = Vector3.new(4, 0.05, 4)
+    scanPart.Anchored = true
+    scanPart.CanCollide = false
+    scanPart.CanQuery = false
+    scanPart.CanTouch = false
+    scanPart.Transparency = 1
+    scanPart.Material = Enum.Material.Neon
+    scanPart.Parent = auraFolder
+
     AuraObjects[character] = {
         player = player,
         root = root,
-        attachment = attachment,
+        folder = auraFolder,
+        attachments = attachments,
         particles = particles,
         light = light,
+        pulseRing = pulseRing,
+        scanPart = scanPart,
+        pulseTime = 0,
+        scanTime = 0,
     }
 end
 
 local function UpdateAuras()
+    local S = Visuals.Settings.Aura
+
     for character, data in pairs(AuraObjects) do
         if not character or not character.Parent or not data.root or not data.root.Parent then
-            if data.attachment then data.attachment:Destroy() end
+            if data.folder then data.folder:Destroy() end
             AuraObjects[character] = nil
-        elseif Visuals.Settings.Aura.Enabled then
-            -- Update particle properties
-            data.particles.Color = ColorSequence.new(Visuals.Settings.Aura.Color)
-            data.particles.Rate = Visuals.Settings.Aura.Speed * 25
-            data.particles.Enabled = true
+        elseif S.Enabled then
+            -- Update all particle clones
+            for _, att in ipairs(data.attachments) do
+                if att and att.Parent then
+                    local particles = att:FindFirstChild("AuraParticles")
+                    if particles then
+                        particles.Color = ColorSequence.new(S.Color)
+                        particles.LightEmission = 1
+
+                        -- Configure based on type
+                        if S.Type == "Glow" then
+                            particles.Texture = "rbxassetid://567454904"
+                            particles.Rate = S.Intensity
+                            particles.Lifetime = NumberRange.new(0.5, 1)
+                            particles.Speed = NumberRange.new(1, 3)
+                            particles.Size = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, S.Size * 0.5),
+                                NumberSequenceKeypoint.new(1, 0)
+                            })
+                            particles.Transparency = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, S.Transparency),
+                                NumberSequenceKeypoint.new(1, 1)
+                            })
+                            particles.Rotation = NumberRange.new(0, 360)
+                            particles.RotSpeed = NumberRange.new(-90, 90)
+
+                        elseif S.Type == "Hexagon" then
+                            particles.Texture = "rbxassetid://243728733" -- hexagon
+                            particles.Rate = S.Intensity * 0.5
+                            particles.Lifetime = NumberRange.new(1, 2)
+                            particles.Speed = NumberRange.new(0.5, 1)
+                            particles.Size = NumberSequence.new(S.Size * 0.3)
+                            particles.Transparency = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, S.Transparency),
+                                NumberSequenceKeypoint.new(0.8, S.Transparency),
+                                NumberSequenceKeypoint.new(1, 1)
+                            })
+                            particles.Rotation = NumberRange.new(0, 360)
+                            particles.RotSpeed = NumberRange.new(-45, 45)
+
+                        elseif S.Type == "DataStream" then
+                            particles.Texture = "rbxassetid://243728733"
+                            particles.Rate = S.Intensity * 2
+                            particles.Lifetime = NumberRange.new(0.3, 0.8)
+                            particles.Speed = NumberRange.new(5, 10)
+                            particles.Size = NumberSequence.new(0.2)
+                            particles.Transparency = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(1, 1)
+                            })
+                            particles.Color = ColorSequence.new({
+                                ColorSequenceKeypoint.new(0, S.Color),
+                                ColorSequenceKeypoint.new(1, S.SecondaryColor)
+                            })
+                            particles.Rotation = NumberRange.new(0, 0)
+                            particles.RotSpeed = NumberRange.new(0, 0)
+                            particles.VelocitySpread = 0
+                            particles.Speed = NumberRange.new(-10, -5) -- falling
+
+                        elseif S.Type == "EnergyPulse" then
+                            particles.Texture = "rbxassetid://567454904"
+                            particles.Rate = S.Intensity * 0.3
+                            particles.Lifetime = NumberRange.new(0.3, 0.5)
+                            particles.Speed = NumberRange.new(0.5, 1)
+                            particles.Size = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(0.5, S.Size * 0.3),
+                                NumberSequenceKeypoint.new(1, 0)
+                            })
+                            particles.Transparency = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(1, 1)
+                            })
+
+                        elseif S.Type == "Hologram" then
+                            particles.Texture = "rbxassetid://243728733"
+                            particles.Rate = S.Intensity * 0.8
+                            particles.Lifetime = NumberRange.new(0.5, 1)
+                            particles.Speed = NumberRange.new(0.2, 0.5)
+                            particles.Size = NumberSequence.new(S.Size * 0.2)
+                            particles.Transparency = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, S.Transparency),
+                                NumberSequenceKeypoint.new(0.9, S.Transparency),
+                                NumberSequenceKeypoint.new(1, 1)
+                            })
+                            particles.Color = ColorSequence.new({
+                                ColorSequenceKeypoint.new(0, S.Color),
+                                ColorSequenceKeypoint.new(0.5, S.SecondaryColor),
+                                ColorSequenceKeypoint.new(1, S.Color)
+                            })
+                            particles.Rotation = NumberRange.new(0, 360)
+                            particles.RotSpeed = NumberRange.new(-180, 180)
+
+                        elseif S.Type == "ScanLines" then
+                            particles.Texture = "rbxassetid://243728733"
+                            particles.Rate = S.Intensity
+                            particles.Lifetime = NumberRange.new(0.5, 1)
+                            particles.Speed = NumberRange.new(-2, -4)
+                            particles.Size = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, S.Size * 0.1),
+                                NumberSequenceKeypoint.new(1, S.Size * 0.1)
+                            })
+                            particles.Transparency = NumberSequence.new({
+                                NumberSequenceKeypoint.new(0, 0),
+                                NumberSequenceKeypoint.new(0.5, S.Transparency),
+                                NumberSequenceKeypoint.new(1, 0)
+                            })
+                            particles.Rotation = NumberRange.new(0, 0)
+                            particles.RotSpeed = NumberRange.new(0, 0)
+                        end
+
+                        particles.Enabled = true
+                    end
+                end
+            end
 
             -- Update light
-            data.light.Color = Visuals.Settings.Aura.Color
-            data.light.Range = Visuals.Settings.Aura.Size * 2
+            data.light.Color = S.Color
+            data.light.Range = S.Size * 2
             data.light.Enabled = true
+
+            -- Energy pulse ring
+            if S.Type == "EnergyPulse" then
+                data.pulseTime = data.pulseTime + (S.Speed * 0.02)
+                local pulseSize = (data.pulseTime % 1) * S.Size * 2
+                local pulseAlpha = 1 - (data.pulseTime % 1)
+
+                data.pulseRing.Size = Vector3.new(pulseSize, 0.1, pulseSize)
+                data.pulseRing.CFrame = CFrame.new(data.root.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+                data.pulseRing.Transparency = pulseAlpha * 0.5
+                data.pulseRing.Color = S.Color
+                data.pulseRing.Material = Enum.Material.Neon
+            else
+                data.pulseRing.Transparency = 1
+            end
+
+            -- Scan lines
+            if S.Type == "ScanLines" then
+                data.scanTime = data.scanTime + (S.Speed * 0.01)
+                local scanY = math.sin(data.scanTime) * 3
+                data.scanPart.CFrame = CFrame.new(data.root.Position + Vector3.new(0, scanY, 0))
+                data.scanPart.Size = Vector3.new(S.Size, 0.05, S.Size)
+                data.scanPart.Transparency = 0.3
+                data.scanPart.Color = S.Color
+                data.scanPart.Material = Enum.Material.Neon
+            else
+                data.scanPart.Transparency = 1
+            end
         else
-            data.particles.Enabled = false
+            -- Disable all
+            for _, att in ipairs(data.attachments) do
+                if att and att.Parent then
+                    local particles = att:FindFirstChild("AuraParticles")
+                    if particles then particles.Enabled = false end
+                end
+            end
             data.light.Enabled = false
+            data.pulseRing.Transparency = 1
+            data.scanPart.Transparency = 1
         end
     end
 end
@@ -283,64 +477,7 @@ end
 -- SCREEN FX
 -- ============================================================
 
-local function CreateScreenFX()
-    if ScreenFXObjects.vignette then return end
-
-    -- Vignette
-    local vignette = Instance.new("ImageLabel")
-    vignette.Name = "Vignette"
-    vignette.Size = UDim2.fromScale(1, 1)
-    vignette.BackgroundTransparency = 1
-    vignette.Image = "rbxassetid://4576475446"
-    vignette.ImageColor3 = Visuals.Settings.ScreenFX.VignetteColor
-    vignette.ImageTransparency = Visuals.Settings.ScreenFX.VignetteTransparency
-    vignette.Parent = LocalPlayer.PlayerGui:FindFirstChild("VisualsGUI") or Instance.new("ScreenGui", LocalPlayer.PlayerGui)
-    ScreenFXObjects.vignette = vignette
-
-    -- Color correction
-    local cc = Instance.new("ColorCorrectionEffect")
-    cc.Parent = Lighting
-    ScreenFXObjects.colorCorrection = cc
-
-    -- Bloom
-    local bloom = Instance.new("BloomEffect")
-    bloom.Parent = Lighting
-    ScreenFXObjects.bloom = bloom
-end
-
-local function UpdateScreenFX()
-    if not Visuals.Settings.ScreenFX.Enabled then
-        if ScreenFXObjects.vignette then ScreenFXObjects.vignette.Visible = false end
-        if ScreenFXObjects.colorCorrection then ScreenFXObjects.colorCorrection.Enabled = false end
-        if ScreenFXObjects.bloom then ScreenFXObjects.bloom.Enabled = false end
-        return
-    end
-
-    CreateScreenFX()
-
-    -- Vignette
-    if ScreenFXObjects.vignette then
-        ScreenFXObjects.vignette.Visible = Visuals.Settings.ScreenFX.Vignette
-        ScreenFXObjects.vignette.ImageColor3 = Visuals.Settings.ScreenFX.VignetteColor
-        ScreenFXObjects.vignette.ImageTransparency = Visuals.Settings.ScreenFX.VignetteTransparency
-    end
-
-    -- Color correction
-    if ScreenFXObjects.colorCorrection then
-        ScreenFXObjects.colorCorrection.Enabled = Visuals.Settings.ScreenFX.ColorCorrection
-        ScreenFXObjects.colorCorrection.TintColor = Visuals.Settings.ScreenFX.TintColor
-        ScreenFXObjects.colorCorrection.Saturation = Visuals.Settings.ScreenFX.Saturation
-        ScreenFXObjects.colorCorrection.Contrast = Visuals.Settings.ScreenFX.Contrast
-    end
-
-    -- Bloom
-    if ScreenFXObjects.bloom then
-        ScreenFXObjects.bloom.Enabled = Visuals.Settings.ScreenFX.Bloom
-        ScreenFXObjects.bloom.Intensity = Visuals.Settings.ScreenFX.BloomIntensity
-        ScreenFXObjects.bloom.Size = Visuals.Settings.ScreenFX.BloomSize
-        ScreenFXObjects.bloom.Threshold = Visuals.Settings.ScreenFX.BloomThreshold
-    end
-end
+-- Screen FX removed - use World tab for color correction and bloom
 
 -- ============================================================
 -- WEATHER
@@ -526,14 +663,28 @@ function Visuals.Update()
                 end
 
                 if visible then
+                    -- Name
                     if data.nameLabel then
                         data.nameLabel.Visible = S.ESP.Names
                     end
+
+                    -- Health bar (vertical, left side)
                     if data.healthBg then
                         data.healthBg.Visible = S.ESP.Health
                         local pct = math.clamp(humanoid.Health / math.max(humanoid.MaxHealth, 1), 0, 1)
                         data.healthFill.Size = UDim2.new(1, 0, pct, 0)
+
+                        -- Color based on health
+                        if pct > 0.6 then
+                            data.healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                        elseif pct > 0.3 then
+                            data.healthFill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+                        else
+                            data.healthFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                        end
                     end
+
+                    -- Distance (bottom)
                     if data.distLabel then
                         data.distLabel.Visible = S.ESP.Distance
                         data.distLabel.Text = string.format("%.0f studs", distance)
@@ -616,22 +767,24 @@ function Visuals.Init(deps)
         SetConfig("ESP_MaxDistance", v)
     end, 8)
 
-    -- Player Aura Section
+    -- Player Aura Section (High-Tech)
     C.Section(page, "Player Aura", 10)
-    C.Toggle(page, "Enabled", false, function(v) S.Aura.Enabled = v end, 11)
-    C.Slider(page, "Size", 1, 20, 5, function(v) S.Aura.Size = v end, 12)
-    C.Slider(page, "Speed", 1, 10, 2, function(v) S.Aura.Speed = v end, 13)
+    C.Toggle(page, "Enabled", S.Aura.Enabled, function(v) S.Aura.Enabled = v end, 11)
+    C.Dropdown(page, "Aura Type", {"Glow", "Hexagon", "DataStream", "EnergyPulse", "Hologram", "ScanLines"}, S.Aura.Type, function(v) S.Aura.Type = v end, 12)
+    C.Slider(page, "Size", 1, 20, S.Aura.Size, function(v) S.Aura.Size = v end, 13)
+    C.Slider(page, "Speed", 1, 10, S.Aura.Speed, function(v) S.Aura.Speed = v end, 14)
+    C.Slider(page, "Intensity", 10, 200, S.Aura.Intensity, function(v) S.Aura.Intensity = v end, 15)
+
+    -- Custom Chams Section
+    C.Section(page, "Custom Chams", 20)
+    C.Toggle(page, "Enabled", S.ChamsStyle.Enabled, function(v) S.ChamsStyle.Enabled = v end, 21)
+    C.Dropdown(page, "Style", {"Hologram", "Neon", "Ghost", "Cyber"}, S.ChamsStyle.Style, function(v) S.ChamsStyle.Style = v end, 22)
+    C.Slider(page, "Glow Intensity", 0, 10, S.ChamsStyle.GlowIntensity, function(v) S.ChamsStyle.GlowIntensity = v end, 23)
+    C.Slider(page, "Scan Speed", 0, 10, S.ChamsStyle.ScanSpeed, function(v) S.ChamsStyle.ScanSpeed = v end, 24)
 
     -- Arm Chams Section
-    C.Section(page, "Arm Chams", 20)
-    C.Toggle(page, "Enabled", false, function(v) S.ArmChams.Enabled = v end, 21)
-
-    -- Screen FX Section
-    C.Section(page, "Screen FX", 30)
-    C.Toggle(page, "Enabled", false, function(v) S.ScreenFX.Enabled = v end, 31)
-    C.Toggle(page, "Vignette", true, function(v) S.ScreenFX.Vignette = v end, 32)
-    C.Toggle(page, "Color Correction", true, function(v) S.ScreenFX.ColorCorrection = v end, 33)
-    C.Toggle(page, "Bloom", true, function(v) S.ScreenFX.Bloom = v end, 34)
+    C.Section(page, "Arm Chams", 30)
+    C.Toggle(page, "Enabled", S.ArmChams.Enabled, function(v) S.ArmChams.Enabled = v end, 31)
 
     -- Weather Section
     C.Section(page, "Weather", 40)
@@ -654,9 +807,6 @@ function Visuals.Cleanup()
     end
     table.clear(AuraObjects)
 
-    if ScreenFXObjects.vignette then ScreenFXObjects.vignette:Destroy() end
-    if ScreenFXObjects.colorCorrection then ScreenFXObjects.colorCorrection:Destroy() end
-    if ScreenFXObjects.bloom then ScreenFXObjects.bloom:Destroy() end
     if WeatherObjects.folder then WeatherObjects.folder:Destroy() end
 end
 
