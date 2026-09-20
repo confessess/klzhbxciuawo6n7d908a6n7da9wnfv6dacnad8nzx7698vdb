@@ -280,15 +280,15 @@ function Components.Dropdown(page, label, options, default, callback, order)
     arrow.TextSize = 8
     arrow.Parent = box
 
-    -- Dropdown list - positioned BELOW with gap to prevent overlap
+    -- Dropdown list - positioned FAR below to prevent overlap
     local list = Instance.new("ScrollingFrame")
     list.Size = UDim2.new(0.55, 0, 0, 0)
-    list.Position = UDim2.new(0.45, 0, 0, 36)
+    list.Position = UDim2.new(0.45, 0, 0, 40)
     list.BackgroundColor3 = Theme.Background
     list.BorderSizePixel = 0
     list.ClipsDescendants = true
     list.Visible = false
-    list.ZIndex = 100
+    list.ZIndex = 1000
     list.ScrollBarThickness = 4
     list.ScrollBarImageColor3 = Theme.Stroke
     list.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -311,28 +311,42 @@ function Components.Dropdown(page, label, options, default, callback, order)
 
     local expanded = false
     local currentValue = default
+    local optionButtons = {}
 
     local function getOptions()
         if type(options) == "function" then
-            return options()
+            local ok, result = pcall(options)
+            if ok and type(result) == "table" then
+                return result
+            end
+            return {"Error loading options"}
         end
-        return options
+        return options or {}
+    end
+
+    local function clearOptions()
+        for _, btn in ipairs(optionButtons) do
+            if btn and btn.Parent then
+                btn:Destroy()
+            end
+        end
+        table.clear(optionButtons)
     end
 
     local function rebuild()
-        for _, child in ipairs(list:GetChildren()) do
-            if child:IsA("TextButton") then child:Destroy() end
-        end
+        clearOptions()
         local opts = getOptions()
+        local maxDisplay = math.min(#opts, 8)
+
         for i, opt in ipairs(opts) do
             local optBtn = Instance.new("TextButton")
-            optBtn.Size = UDim2.new(1, 0, 0, 28)
+            optBtn.Size = UDim2.new(1, 0, 0, 26)
             optBtn.BackgroundColor3 = Theme.Element
             optBtn.BorderSizePixel = 0
             optBtn.Text = ""
             optBtn.AutoButtonColor = false
             optBtn.LayoutOrder = i
-            optBtn.ZIndex = 101
+            optBtn.ZIndex = 1001
             optBtn.Parent = list
             corner(optBtn, 4)
 
@@ -345,7 +359,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
             optLbl.Font = Enum.Font.GothamMedium
             optLbl.TextSize = 12
             optLbl.TextXAlignment = Enum.TextXAlignment.Left
-            optLbl.ZIndex = 102
+            optLbl.ZIndex = 1002
             optLbl.Parent = optBtn
 
             optBtn.MouseButton1Click:Connect(function()
@@ -354,29 +368,93 @@ function Components.Dropdown(page, label, options, default, callback, order)
                     valueLbl.Text = tostring(opt)
                     if callback then callback(opt) end
                     expanded = false
-                    tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
-                    task.delay(0.15, function() list.Visible = false end)
+                    list.Visible = false
+                    list.Size = UDim2.new(0.55, 0, 0, 0)
                 end)
                 if not ok then warn("[GUI] Dropdown error: " .. tostring(err)) end
             end)
+
+            table.insert(optionButtons, optBtn)
         end
+
+        return #opts
+    end
+
+    local function close()
+        expanded = false
+        list.Visible = false
+        list.Size = UDim2.new(0.55, 0, 0, 0)
+    end
+
+    local function open()
+        -- Close ALL other dropdowns first
+        for _, child in ipairs(page:GetChildren()) do
+            if child ~= frame then
+                local otherList = child:FindFirstChild("ScrollingFrame")
+                if otherList then
+                    otherList.Visible = false
+                    otherList.Size = UDim2.new(0.55, 0, 0, 0)
+                end
+            end
+        end
+
+        local optCount = rebuild()
+        list.Visible = true
+        local listHeight = math.min(optCount * 28 + 8, 240)
+        list.Size = UDim2.new(0.55, 0, 0, listHeight)
+        expanded = true
     end
 
     box.MouseButton1Click:Connect(function()
-        expanded = not expanded
         if expanded then
-            rebuild()
-            list.Visible = true
-            local opts = getOptions()
-            local listHeight = math.min(#opts * 30 + 8, 180)
-            tween(list, {Size = UDim2.new(0.55, 0, 0, listHeight)})
+            close()
         else
-            tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
-            task.delay(0.15, function() list.Visible = false end)
+            open()
         end
     end)
 
-    return {Set = function(v) currentValue = v valueLbl.Text = tostring(v) end, Get = function() return currentValue end}
+    -- Close when clicking elsewhere
+    local clickConn = nil
+    box.MouseButton1Click:Connect(function()
+        if expanded and not clickConn then
+            clickConn = UserInputService.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    local listPos = list.AbsolutePosition
+                    local listSize = list.AbsoluteSize
+                    local boxPos = box.AbsolutePosition
+                    local boxSize = box.AbsoluteSize
+
+                    local inList = mousePos.X >= listPos.X and mousePos.X <= listPos.X + listSize.X 
+                        and mousePos.Y >= listPos.Y and mousePos.Y <= listPos.Y + listSize.Y
+                    local inBox = mousePos.X >= boxPos.X and mousePos.X <= boxPos.X + boxSize.X 
+                        and mousePos.Y >= boxPos.Y and mousePos.Y <= boxPos.Y + boxSize.Y
+
+                    if not inList and not inBox then
+                        close()
+                        if clickConn then
+                            clickConn:Disconnect()
+                            clickConn = nil
+                        end
+                    end
+                end
+            end)
+        elseif not expanded and clickConn then
+            clickConn:Disconnect()
+            clickConn = nil
+        end
+    end)
+
+    return {
+        Set = function(v) 
+            currentValue = v 
+            valueLbl.Text = tostring(v) 
+        end, 
+        Get = function() 
+            return currentValue 
+        end,
+        Close = close
+    }
 end
 
 function Components.Slider(page, label, min, max, default, callback, order)
@@ -873,7 +951,7 @@ local function build()
     MainFrame.Name = "Main"
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.Size = UDim2.fromOffset(580, 440)
+    MainFrame.Size = UDim2.fromOffset(600, 460)
     MainFrame.BackgroundColor3 = Theme.Background
     MainFrame.BorderSizePixel = 0
     MainFrame.Visible = false
@@ -913,7 +991,7 @@ local function build()
     end)
 
     TabBar = Instance.new("Frame")
-    TabBar.Size = UDim2.new(0, 550, 0, 28)
+    TabBar.Size = UDim2.new(0, 570, 0, 28)
     TabBar.AnchorPoint = Vector2.new(0.5, 0.5)
     TabBar.Position = UDim2.new(0.5, 0, 0.13, 0)
     TabBar.BackgroundTransparency = 1
@@ -927,7 +1005,7 @@ local function build()
     tabLayout.Parent = TabBar
 
     ContentHost = Instance.new("Frame")
-    ContentHost.Size = UDim2.new(0, 550, 0, 340)
+    ContentHost.Size = UDim2.new(0, 570, 0, 360)
     ContentHost.AnchorPoint = Vector2.new(0.5, 0.5)
     ContentHost.Position = UDim2.new(0.5, 0, 0.57, 0)
     ContentHost.BackgroundTransparency = 1
