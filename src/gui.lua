@@ -318,7 +318,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     popupContainer.Visible = false
     popupContainer.ZIndex = 100
     popupContainer.ClipsDescendants = true
-    popupContainer.Parent = page
+    popupContainer.Parent = ContentHost  -- Parent to ContentHost to avoid UIListLayout on page
     corner(popupContainer, 6)
     stroke(popupContainer)
 
@@ -441,10 +441,14 @@ function Components.Dropdown(page, label, options, default, callback, order)
         -- Get absolute positions
         local boxPos = box.AbsolutePosition
         local boxSize = box.AbsoluteSize
+        local hostPos = ContentHost.AbsolutePosition
 
-        -- Position popup using OFFSET from absolute position
-        -- This ensures it's always below the button regardless of parent scrolling
-        popupContainer.Position = UDim2.new(0, boxPos.X, 0, boxPos.Y + boxSize.Y + 6)
+        -- Calculate position relative to ContentHost (parent of popup)
+        local relX = boxPos.X - hostPos.X
+        local relY = boxPos.Y - hostPos.Y + boxSize.Y + 6
+
+        -- Position popup relative to page
+        popupContainer.Position = UDim2.new(0, relX, 0, relY)
         popupContainer.Size = UDim2.new(0, boxSize.X, 0, 0)
         popupContainer.Visible = true
 
