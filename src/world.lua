@@ -15,6 +15,9 @@ local bloomEffect = nil
 local currentSkybox = "Default"
 local skyboxConn = nil
 
+-- Original lighting values storage
+local OriginalLighting = {}
+
 -- Skybox presets
 local SKYBOXES = {
     Default = nil,
@@ -102,6 +105,34 @@ local SKYBOX_LIST = {
 }
 
 -- ------------------------------------------------------------
+-- Original lighting backup/restore
+-- ------------------------------------------------------------
+
+local function storeOriginalLighting()
+    if not Lighting then return end
+    OriginalLighting.Ambient = Lighting.Ambient
+    OriginalLighting.OutdoorAmbient = Lighting.OutdoorAmbient
+    OriginalLighting.ShadowColor = Lighting.ShadowColor
+    OriginalLighting.Brightness = Lighting.Brightness
+    OriginalLighting.GlobalShadows = Lighting.GlobalShadows
+    OriginalLighting.FogEnd = Lighting.FogEnd
+    OriginalLighting.FogColor = Lighting.FogColor
+    OriginalLighting.ClockTime = Lighting.ClockTime
+end
+
+local function restoreOriginalLighting()
+    if not Lighting then return end
+    if OriginalLighting.Ambient ~= nil then Lighting.Ambient = OriginalLighting.Ambient end
+    if OriginalLighting.OutdoorAmbient ~= nil then Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient end
+    if OriginalLighting.ShadowColor ~= nil then Lighting.ShadowColor = OriginalLighting.ShadowColor end
+    if OriginalLighting.Brightness ~= nil then Lighting.Brightness = OriginalLighting.Brightness end
+    if OriginalLighting.GlobalShadows ~= nil then Lighting.GlobalShadows = OriginalLighting.GlobalShadows end
+    if OriginalLighting.FogEnd ~= nil then Lighting.FogEnd = OriginalLighting.FogEnd end
+    if OriginalLighting.FogColor ~= nil then Lighting.FogColor = OriginalLighting.FogColor end
+    if OriginalLighting.ClockTime ~= nil then Lighting.ClockTime = OriginalLighting.ClockTime end
+end
+
+-- ------------------------------------------------------------
 -- Skybox
 -- ------------------------------------------------------------
 
@@ -127,8 +158,25 @@ end
 -- Lighting updates
 -- ------------------------------------------------------------
 
+local function isAnyWorldFeatureEnabled()
+    return Config.Get("World_ColorCorrection") == true
+        or Config.Get("World_CustomTime") == true
+        or Config.Get("World_Fullbright") == true
+        or Config.Get("World_FogEnabled") == true
+        or Config.Get("World_BloomEnabled") == true
+        or (Config.Get("World_Skybox") or "Default") ~= "Default"
+end
+
 local function updateLighting()
     if not Lighting then return end
+
+    -- If no world features are enabled, restore originals and disable effects
+    if not isAnyWorldFeatureEnabled() then
+        restoreOriginalLighting()
+        if colorCorrection then colorCorrection.Enabled = false end
+        if bloomEffect then bloomEffect.Enabled = false end
+        return
+    end
 
     -- Color correction
     if colorCorrection then
@@ -143,20 +191,21 @@ local function updateLighting()
         Lighting.ClockTime = Config.Get("World_TimeOfDay") or 12
     end
 
-    -- Ambient
-    Lighting.Ambient = Utils.HexToColor(Config.Get("World_Ambient"))
-    Lighting.OutdoorAmbient = Utils.HexToColor(Config.Get("World_OutdoorAmbient"))
-    Lighting.ShadowColor = Utils.HexToColor(Config.Get("World_ShadowColor"))
-    Lighting.Brightness = Config.Get("World_Brightness") or 1
-
-    -- Fullbright
+    -- Ambient (only if fullbright or custom ambient is intended)
     if Config.Get("World_Fullbright") then
         Lighting.Ambient = Color3.new(1, 1, 1)
         Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
         Lighting.Brightness = 2
         Lighting.GlobalShadows = false
     else
-        Lighting.GlobalShadows = true
+        -- Restore from original if we had changed them
+        if OriginalLighting.Ambient ~= nil then
+            Lighting.Ambient = OriginalLighting.Ambient
+            Lighting.OutdoorAmbient = OriginalLighting.OutdoorAmbient
+            Lighting.ShadowColor = OriginalLighting.ShadowColor
+            Lighting.Brightness = OriginalLighting.Brightness
+            Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+        end
     end
 
     -- Fog
@@ -165,7 +214,12 @@ local function updateLighting()
         local density = Config.Get("World_FogDensity") or 0.1
         Lighting.FogEnd = 1000 - density * 900
     else
-        Lighting.FogEnd = 100000
+        if OriginalLighting.FogEnd ~= nil then
+            Lighting.FogEnd = OriginalLighting.FogEnd
+        end
+        if OriginalLighting.FogColor ~= nil then
+            Lighting.FogColor = OriginalLighting.FogColor
+        end
     end
 
     -- Bloom
@@ -197,7 +251,10 @@ function World.Init(deps)
     Lighting = game:GetService("Lighting")
     Camera   = Utils.Camera
 
-    -- Create effects
+    -- Store original lighting values before we touch anything
+    storeOriginalLighting()
+
+    -- Create effects (disabled by default)
     colorCorrection = Instance.new("ColorCorrectionEffect")
     colorCorrection.Parent = Lighting
     colorCorrection.Enabled = false
@@ -206,9 +263,11 @@ function World.Init(deps)
     bloomEffect.Parent = Lighting
     bloomEffect.Enabled = false
 
-    -- Apply initial settings
+    -- Apply initial settings ONLY if something is actually enabled
     task.delay(0.5, function()
-        updateLighting()
+        if isAnyWorldFeatureEnabled() then
+            updateLighting()
+        end
         applySkybox(Config.Get("World_Skybox") or "Default")
     end)
 
@@ -260,6 +319,7 @@ function World.Init(deps)
 end
 
 function World.Cleanup()
+    restoreOriginalLighting()
     if colorCorrection then
         colorCorrection:Destroy()
         colorCorrection = nil

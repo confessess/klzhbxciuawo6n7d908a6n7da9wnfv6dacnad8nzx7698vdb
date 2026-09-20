@@ -1145,8 +1145,12 @@ local function OnPlayerAdded(player)
         character:WaitForChild("HumanoidRootPart", 5)
         task.wait(0.3)
 
-        CreateAura(player, character)
-        CreatePlayerChams(player, character)
+        if Visuals.Settings.Aura.Enabled then
+            CreateAura(player, character)
+        end
+        if Visuals.Settings.PlayerChams.Enabled then
+            CreatePlayerChams(player, character)
+        end
     end)
 
     if player.Character then
@@ -1154,8 +1158,12 @@ local function OnPlayerAdded(player)
             player.Character:WaitForChild("Head", 5)
             task.wait(0.3)
 
-            CreateAura(player, player.Character)
-            CreatePlayerChams(player, player.Character)
+            if Visuals.Settings.Aura.Enabled then
+                CreateAura(player, player.Character)
+            end
+            if Visuals.Settings.PlayerChams.Enabled then
+                CreatePlayerChams(player, player.Character)
+            end
         end)
     end
 

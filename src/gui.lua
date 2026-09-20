@@ -288,7 +288,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     arrow.ZIndex = 11
     arrow.Parent = box
 
-    -- Create popup list - parented to frame for simple positioning
+    -- Create popup list - parented to ScreenGui to avoid clipping
     local popup = Instance.new("ScrollingFrame")
     popup.Name = "DDPopup_" .. tostring(order or math.random(10000, 99999))
     popup.BackgroundColor3 = Theme.Background
@@ -301,8 +301,8 @@ function Components.Dropdown(page, label, options, default, callback, order)
     popup.CanvasSize = UDim2.fromScale(0, 0)
     popup.ScrollingDirection = Enum.ScrollingDirection.Y
     popup.ElasticBehavior = Enum.ElasticBehavior.Never
-    popup.Parent = frame
-    corner(popup, 6)
+    popup.ClipsDescendants = true
+    popup.Parent = ScreenGui
     stroke(popup)
 
     local listLayout = Instance.new("UIListLayout")
@@ -395,15 +395,15 @@ function Components.Dropdown(page, label, options, default, callback, order)
         end
         local optCount = rebuild()
 
-        -- Position popup at the bottom of the frame using offset
-        -- Frame is 32px tall, box is at Y=2 with height 28
-        -- So popup should start at Y=34 (2 + 28 + 4 gap)
-        popup.Position = UDim2.new(0.45, 0, 0, 34)
-        popup.Size = UDim2.new(0.55, 0, 0, 0)
+        -- Position popup absolutely based on box position to avoid clipping
+        local boxPos = box.AbsolutePosition
+        local boxSize = box.AbsoluteSize
+        popup.Position = UDim2.fromOffset(boxPos.X, boxPos.Y + boxSize.Y + 4)
+        popup.Size = UDim2.fromOffset(boxSize.X, 0)
         popup.Visible = true
 
         local listHeight = math.min(optCount * 30 + 10, 280)
-        popup.Size = UDim2.new(0.55, 0, 0, listHeight)
+        popup.Size = UDim2.fromOffset(boxSize.X, listHeight)
         expanded = true
 
         closeConnection = UserInputService.InputBegan:Connect(function(input)
