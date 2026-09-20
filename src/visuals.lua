@@ -23,22 +23,22 @@ local ESPPlayerAddedConnection = nil
 local ESPPlayerRemovingConnection = nil
 local ESPCharacterAddedConnections = {}
 
-local MakeDrawing = function(type, props) return Utils.MakeDrawing(type, props) end
-local SetDrawing = function(obj, key, value) Utils.SetDrawing(obj, key, value) end
-local RemoveDrawing = function(obj) Utils.RemoveDrawing(obj) end
-local W2S = function(position) return Utils.W2S(position) end
-
--- ═════════════════════════════════════════════════════════════════════════════
--- SETTINGS
--- ═════════════════════════════════════════════════════════════════════════════
-Visuals.Settings = {
-    ESP = {
-        Enabled = false,
-        Boxes = false,
-        Box3D = false,
-        Names = false,
-        Distance = false,
-        Health = false,
+local MakeDrawing = function(type, props)
+    if not Utils then return nil end
+    return Utils.MakeDrawing(type, props)
+end
+local SetDrawing = function(obj, key, value)
+    if not Utils then return end
+    Utils.SetDrawing(obj, key, value)
+end
+local RemoveDrawing = function(obj)
+    if not Utils then return end
+    Utils.RemoveDrawing(obj)
+end
+local W2S = function(position)
+    if not Utils then return nil, false, 0 end
+    return Utils.W2S(position)
+end
         Skeleton = false,
         Chams = false,
         HeadDot = false,
@@ -1146,7 +1146,11 @@ local function OnPlayerAdded(player)
         task.wait(0.3)
 
         if Visuals.Settings.Aura.Enabled then
+        if Visuals.Settings.Aura.Enabled then
             CreateAura(player, character)
+        end
+        if Visuals.Settings.PlayerChams.Enabled then
+            CreatePlayerChams(player, character)
         end
         if Visuals.Settings.PlayerChams.Enabled then
             CreatePlayerChams(player, character)
@@ -1159,7 +1163,11 @@ local function OnPlayerAdded(player)
             task.wait(0.3)
 
             if Visuals.Settings.Aura.Enabled then
+            if Visuals.Settings.Aura.Enabled then
                 CreateAura(player, player.Character)
+            end
+            if Visuals.Settings.PlayerChams.Enabled then
+                CreatePlayerChams(player, player.Character)
             end
             if Visuals.Settings.PlayerChams.Enabled then
                 CreatePlayerChams(player, player.Character)
@@ -1176,23 +1184,6 @@ local function OnPlayerAdded(player)
     end)
 end
 
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        OnPlayerAdded(player)
-    end
-end
-
-Players.PlayerAdded:Connect(OnPlayerAdded)
-
-Players.PlayerRemoving:Connect(function(player)
-    if player.Character then
-        if AuraObjects[player.Character] then
-            if AuraObjects[player.Character].folder then AuraObjects[player.Character].folder:Destroy() end
-            AuraObjects[player.Character] = nil
-        end
-        CleanupPlayerChams(player.Character)
-    end
-end)
 
 -- ═════════════════════════════════════════════════════════════════════════════
 -- MAIN UPDATE LOOP
@@ -1222,6 +1213,23 @@ function Visuals.Init(deps)
         while not Utils and tick() - startTime < 5 do
             task.wait(0.1)
             Utils = deps.Utils
+
+    -- Initialize existing players and connect events
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            OnPlayerAdded(player)
+        end
+    end
+    Players.PlayerAdded:Connect(OnPlayerAdded)
+    Players.PlayerRemoving:Connect(function(player)
+        if player.Character then
+            if AuraObjects[player.Character] then
+                if AuraObjects[player.Character].folder then AuraObjects[player.Character].folder:Destroy() end
+                AuraObjects[player.Character] = nil
+            end
+            CleanupPlayerChams(player.Character)
+        end
+    end)
         end
     end
 
@@ -1358,6 +1366,5 @@ function Visuals.Cleanup()
     if WeatherObjects.part then WeatherObjects.part:Destroy() end
 end
 
-ESPInit()
 
 return Visuals

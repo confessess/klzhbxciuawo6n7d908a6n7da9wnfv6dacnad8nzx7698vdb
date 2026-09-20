@@ -907,6 +907,7 @@ local function build()
     ScreenGui.ResetOnSpawn = false
     ScreenGui.IgnoreGuiInset = true
     ScreenGui.DisplayOrder = 999
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
     ScreenGui.Parent = playerGui
 
     MainFrame = Instance.new("Frame")

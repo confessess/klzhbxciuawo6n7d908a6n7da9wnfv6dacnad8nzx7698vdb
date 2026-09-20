@@ -13,6 +13,7 @@ local Lighting, Camera
 local colorCorrection = nil
 local bloomEffect = nil
 local currentSkybox = "Default"
+local OriginalSky = nil
 local skyboxConn = nil
 
 -- Original lighting values storage
@@ -109,6 +110,7 @@ local SKYBOX_LIST = {
 -- ------------------------------------------------------------
 
 local function storeOriginalLighting()
+    storeOriginalSky()
     if not Lighting then return end
     OriginalLighting.Ambient = Lighting.Ambient
     OriginalLighting.OutdoorAmbient = Lighting.OutdoorAmbient
@@ -132,6 +134,29 @@ local function restoreOriginalLighting()
     if OriginalLighting.ClockTime ~= nil then Lighting.ClockTime = OriginalLighting.ClockTime end
 end
 
+local function storeOriginalSky()
+    if not Lighting then return end
+    for _, child in ipairs(Lighting:GetChildren()) do
+        if child:IsA("Sky") then
+            OriginalSky = child:Clone()
+            OriginalSky.Parent = nil
+            break
+        end
+    end
+end
+
+local function restoreOriginalSky()
+    if not Lighting then return end
+    for _, child in ipairs(Lighting:GetChildren()) do
+        if child:IsA("Sky") then
+            child:Destroy()
+        end
+    end
+    if OriginalSky then
+        OriginalSky.Parent = Lighting
+    end
+end
+
 -- ------------------------------------------------------------
 -- Skybox
 -- ------------------------------------------------------------
@@ -151,6 +176,8 @@ local function applySkybox(name)
             sky[prop] = value
         end
         sky.Parent = Lighting
+    else
+        restoreOriginalSky()
     end
 end
 
@@ -268,7 +295,10 @@ function World.Init(deps)
         if isAnyWorldFeatureEnabled() then
             updateLighting()
         end
-        applySkybox(Config.Get("World_Skybox") or "Default")
+        local savedSky = Config.Get("World_Skybox") or "Default"
+        if savedSky ~= "Default" then
+            applySkybox(savedSky)
+        end
     end)
 
     -- Register GUI (Misc tab) with Master Sections
@@ -320,6 +350,7 @@ end
 
 function World.Cleanup()
     restoreOriginalLighting()
+    restoreOriginalSky()
     if colorCorrection then
         colorCorrection:Destroy()
         colorCorrection = nil
