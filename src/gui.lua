@@ -85,13 +85,7 @@ function Components.Section(page, text, order)
 end
 
 function Components.MasterSection(page, text, order, defaultOpen)
-    print("[GUI] Creating MasterSection:", text, "defaultOpen:", tostring(defaultOpen))
-
-    -- FORCE defaultOpen to boolean false unless explicitly true
-    local startOpen = false
-    if defaultOpen == true then
-        startOpen = true
-    end
+    print("[GUI] Creating MasterSection:", text, "- FORCING CLOSED")
 
     local sectionFrame = Instance.new("Frame")
     sectionFrame.Size = UDim2.new(1, 0, 0, 28)
@@ -126,7 +120,7 @@ function Components.MasterSection(page, text, order, defaultOpen)
     arrow.Size = UDim2.fromOffset(20, 20)
     arrow.Position = UDim2.new(1, -28, 0.5, -10)
     arrow.BackgroundTransparency = 1
-    arrow.Text = startOpen and "▼" or "▶"
+    arrow.Text = "▶"  -- ALWAYS start with right arrow (closed)
     arrow.TextColor3 = Theme.Text
     arrow.Font = Enum.Font.GothamBold
     arrow.TextSize = 10
@@ -157,7 +151,6 @@ function Components.MasterSection(page, text, order, defaultOpen)
 
     local function setOpen(open)
         isOpen = (open == true)
-        print("[GUI] MasterSection", text, "setOpen:", tostring(isOpen))
 
         if isOpen then
             arrow.Text = "▼"
@@ -186,14 +179,22 @@ function Components.MasterSection(page, text, order, defaultOpen)
         setOpen(not isOpen)
     end)
 
-    -- If startOpen is true, open it after a frame
-    if startOpen then
-        task.defer(function()
-            setOpen(true)
-        end)
+    -- Create a setOpen that ONLY works after user has manually interacted
+    local userInteracted = false
+    local wrappedSetOpen = function(open)
+        if not userInteracted then
+            -- Ignore setOpen calls during initialization
+            return
+        end
+        setOpen(open)
     end
 
-    return content, setOpen
+    -- Mark user interaction when header is clicked
+    header.MouseButton1Click:Connect(function()
+        userInteracted = true
+    end)
+
+    return content, wrappedSetOpen
 end
 
 function Components.Toggle(page, label, default, callback, order)
@@ -256,8 +257,6 @@ function Components.Toggle(page, label, default, callback, order)
 end
 
 function Components.Dropdown(page, label, options, default, callback, order)
-    print("[GUI] Creating Dropdown:", label)
-
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 32)
     frame.BackgroundTransparency = 1
@@ -311,20 +310,32 @@ function Components.Dropdown(page, label, options, default, callback, order)
     arrow.ZIndex = 11
     arrow.Parent = box
 
-    -- Create popup list - parented to frame, positioned below
+    -- Create popup list - use a Frame container with ScrollingFrame inside for better control
+    local popupContainer = Instance.new("Frame")
+    popupContainer.Name = "DDPopup_" .. tostring(order or math.random(10000, 99999))
+    popupContainer.BackgroundColor3 = Theme.Background
+    popupContainer.BorderSizePixel = 0
+    popupContainer.Visible = false
+    popupContainer.ZIndex = 100
+    popupContainer.ClipsDescendants = true
+    popupContainer.Parent = page
+    corner(popupContainer, 6)
+    stroke(popupContainer)
+
     local popup = Instance.new("ScrollingFrame")
-    popup.Name = "DDPopup_" .. tostring(order or math.random(10000, 99999))
-    popup.BackgroundColor3 = Theme.Background
+    popup.Name = "ScrollList"
+    popup.Size = UDim2.new(1, -4, 1, -4)
+    popup.Position = UDim2.new(0, 2, 0, 2)
+    popup.BackgroundTransparency = 1
     popup.BorderSizePixel = 0
-    popup.Visible = false  -- START CLOSED
-    popup.ZIndex = 100
-    popup.ScrollBarThickness = 4
-    popup.ScrollBarImageColor3 = Theme.Stroke
+    popup.ZIndex = 101
+    popup.ScrollBarThickness = 6
+    popup.ScrollBarImageColor3 = Theme.TextDim
     popup.AutomaticCanvasSize = Enum.AutomaticSize.Y
     popup.CanvasSize = UDim2.fromScale(0, 0)
-    popup.Parent = frame
-    corner(popup, 6)
-    stroke(popup)
+    popup.ScrollingDirection = Enum.ScrollingDirection.Y
+    popup.ElasticBehavior = Enum.ElasticBehavior.Never
+    popup.Parent = popupContainer
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -408,10 +419,9 @@ function Components.Dropdown(page, label, options, default, callback, order)
     end
 
     local function close()
-        print("[GUI] Closing dropdown:", label)
         expanded = false
-        popup.Visible = false
-        popup.Size = UDim2.new(0.55, 0, 0, 0)
+        popupContainer.Visible = false
+        popupContainer.Size = UDim2.new(0, 0, 0, 0)
         if closeConnection then
             closeConnection:Disconnect()
             closeConnection = nil
@@ -419,8 +429,6 @@ function Components.Dropdown(page, label, options, default, callback, order)
     end
 
     local function open()
-        print("[GUI] Opening dropdown:", label)
-
         -- Close all other dropdowns first
         for _, dd in ipairs(AllDropdowns) do
             if dd ~= control and dd.Close then
@@ -430,13 +438,21 @@ function Components.Dropdown(page, label, options, default, callback, order)
 
         local optCount = rebuild()
 
-        -- Position popup BELOW the box with 36px offset
-        popup.Position = UDim2.new(0.45, 0, 0, 36)
-        popup.Size = UDim2.new(0.55, 0, 0, 0)
-        popup.Visible = true
+        -- Calculate position based on frame's absolute position
+        local framePos = frame.AbsolutePosition
+        local frameSize = frame.AbsoluteSize
+        local pagePos = page.AbsolutePosition
 
-        local listHeight = math.min(optCount * 28 + 8, 250)
-        popup.Size = UDim2.new(0.55, 0, 0, listHeight)
+        -- Position popup at same X as box, but below frame with 4px gap
+        local relX = framePos.X - pagePos.X + (frameSize.X * 0.45)
+        local relY = framePos.Y - pagePos.Y + frameSize.Y + 4
+
+        popupContainer.Position = UDim2.new(0, relX, 0, relY)
+        popupContainer.Size = UDim2.new(0, frameSize.X * 0.55, 0, 0)
+        popupContainer.Visible = true
+
+        local listHeight = math.min(optCount * 30 + 10, 280)
+        popupContainer.Size = UDim2.new(0, frameSize.X * 0.55, 0, listHeight)
 
         expanded = true
 
@@ -444,8 +460,8 @@ function Components.Dropdown(page, label, options, default, callback, order)
         closeConnection = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local mousePos = UserInputService:GetMouseLocation()
-                local popupPos = popup.AbsolutePosition
-                local popupSize = popup.AbsoluteSize
+                local popupPos = popupContainer.AbsolutePosition
+                local popupSize = popupContainer.AbsoluteSize
                 local boxPos = box.AbsolutePosition
                 local boxSize = box.AbsoluteSize
 
@@ -469,7 +485,6 @@ function Components.Dropdown(page, label, options, default, callback, order)
         end
     end)
 
-    -- Create control interface
     local control = {
         Set = function(v) 
             currentValue = v 
@@ -484,7 +499,6 @@ function Components.Dropdown(page, label, options, default, callback, order)
         end
     }
 
-    -- Register in global dropdown list
     table.insert(AllDropdowns, control)
 
     return control

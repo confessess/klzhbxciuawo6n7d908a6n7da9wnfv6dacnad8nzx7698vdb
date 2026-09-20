@@ -555,7 +555,7 @@ function Combat.Init(deps)
 
         -- Auto-expand/collapse based on enabled state
         local aimbotEnabled = Config.Get("Aimbot_Enabled") or false
-        setAimbotOpen(aimbotEnabled)
+        
 
         -- Hook enabled toggle to expand/collapse
         local aimbotToggle = aimbotSection:FindFirstChildWhichIsA("Frame")
@@ -574,7 +574,7 @@ function Combat.Init(deps)
         C.Slider(silentSection, "Hitchance %", 0, 100, Config.Get("SilentAim_Hitchance"), function(v) Config.Set("SilentAim_Hitchance", v) end, 26)
         C.Dropdown(silentSection, "Hit Part", {"Head", "HumanoidRootPart"}, Config.Get("SilentAim_HitPart"), function(v) Config.Set("SilentAim_HitPart", v) end, 27)
 
-        setSilentOpen(Config.Get("SilentAim_Enabled") or false)
+        
 
         -- ========================================
         -- TRIGGERBOT MASTER SECTION
@@ -586,7 +586,7 @@ function Combat.Init(deps)
         C.Slider(triggerSection, "Chance %", 1, 100, Config.Get("Triggerbot_Chance"), function(v) Config.Set("Triggerbot_Chance", v) end, 43)
         C.Slider(triggerSection, "Delay", 0, 50, Config.Get("Triggerbot_Delay"), function(v) Config.Set("Triggerbot_Delay", v) end, 44)
 
-        setTriggerOpen(Config.Get("Triggerbot_Enabled") or false)
+        
 
         -- ========================================
         -- RAGEBOT MASTER SECTION
@@ -595,7 +595,7 @@ function Combat.Init(deps)
 
         C.Toggle(rageSection, "Enabled", Config.Get("Ragebot_Enabled"), function(v) Config.Set("Ragebot_Enabled", v) end, 61)
 
-        setRageOpen(Config.Get("Ragebot_Enabled") or false)
+       
     end
 
     print("[rivals] Combat module initialized.")

@@ -833,7 +833,7 @@ function Visuals.Init(deps)
         SetConfig("ESP_MaxDistance", v)
     end, 8)
 
-    setEspOpen(S.ESP.Enabled)
+    
 
     -- ========================================
     -- PLAYER AURA MASTER SECTION
@@ -848,7 +848,7 @@ function Visuals.Init(deps)
     C.Slider(auraSection, "Speed", 1, 10, S.Aura.Speed, function(v) S.Aura.Speed = v end, 14)
     C.Slider(auraSection, "Intensity", 10, 200, S.Aura.Intensity, function(v) S.Aura.Intensity = v end, 15)
 
-    setAuraOpen(S.Aura.Enabled)
+    
 
     -- ========================================
     -- CUSTOM CHAMS MASTER SECTION
@@ -862,7 +862,7 @@ function Visuals.Init(deps)
     C.Slider(chamsSection, "Glow Intensity", 0, 10, S.ChamsStyle.GlowIntensity, function(v) S.ChamsStyle.GlowIntensity = v end, 23)
     C.Slider(chamsSection, "Scan Speed", 0, 10, S.ChamsStyle.ScanSpeed, function(v) S.ChamsStyle.ScanSpeed = v end, 24)
 
-    setChamsOpen(S.ChamsStyle.Enabled)
+   
 
     -- ========================================
     -- ARM CHAMS MASTER SECTION
@@ -873,7 +873,7 @@ function Visuals.Init(deps)
         S.ArmChams.Enabled = v
     end, 31)
 
-    setArmOpen(S.ArmChams.Enabled)
+   
 
     -- ========================================
     -- WEATHER MASTER SECTION
@@ -886,7 +886,7 @@ function Visuals.Init(deps)
     C.Dropdown(weatherSection, "Type", {"Rain", "Snow", "Storm"}, S.Weather.Type, function(v) S.Weather.Type = v end, 42)
     C.Slider(weatherSection, "Intensity", 10, 200, S.Weather.Intensity, function(v) S.Weather.Intensity = v end, 43)
 
-    setWeatherOpen(S.Weather.Enabled)
+   
 
     print("[Visuals] GUI registered")
 end
