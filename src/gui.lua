@@ -318,7 +318,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     popupContainer.Visible = false
     popupContainer.ZIndex = 100
     popupContainer.ClipsDescendants = true
-    popupContainer.Parent = ContentHost  -- Parent to ContentHost to avoid UIListLayout on page
+    popupContainer.Parent = frame  -- Parent to the dropdown frame itself
     corner(popupContainer, 6)
     stroke(popupContainer)
 
