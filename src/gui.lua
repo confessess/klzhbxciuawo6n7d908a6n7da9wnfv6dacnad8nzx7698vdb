@@ -318,7 +318,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     popupContainer.Visible = false
     popupContainer.ZIndex = 100
     popupContainer.ClipsDescendants = true
-    popupContainer.Parent = frame  -- Parent to the dropdown frame itself
+    popupContainer.Parent = ContentHost  -- Parent to ContentHost for stable positioning
     corner(popupContainer, 6)
     stroke(popupContainer)
 
@@ -438,23 +438,21 @@ function Components.Dropdown(page, label, options, default, callback, order)
 
         local optCount = rebuild()
 
-        -- Use task.defer to ensure box is rendered and AbsolutePosition is correct
-        task.defer(function()
-            local boxPos = box.AbsolutePosition
-            local boxSize = box.AbsoluteSize
-            local hostPos = ContentHost.AbsolutePosition
+        -- Position popupContainer relative to ContentHost using absolute coordinates
+        local boxPos = box.AbsolutePosition
+        local boxSize = box.AbsoluteSize
+        local hostPos = ContentHost.AbsolutePosition
 
-            -- Calculate position relative to ContentHost
-            local relX = boxPos.X - hostPos.X
-            local relY = boxPos.Y - hostPos.Y + boxSize.Y + 6
+        -- Calculate position relative to ContentHost
+        local relX = boxPos.X - hostPos.X
+        local relY = boxPos.Y - hostPos.Y + boxSize.Y + 6
 
-            popupContainer.Position = UDim2.new(0, relX, 0, relY)
-            popupContainer.Size = UDim2.new(0, boxSize.X, 0, 0)
-            popupContainer.Visible = true
+        popupContainer.Position = UDim2.new(0, relX, 0, relY)
+        popupContainer.Size = UDim2.new(0, boxSize.X, 0, 0)
+        popupContainer.Visible = true
 
-            local listHeight = math.min(optCount * 30 + 10, 280)
-            popupContainer.Size = UDim2.new(0, boxSize.X, 0, listHeight)
-        end)
+        local listHeight = math.min(optCount * 30 + 10, 280)
+        popupContainer.Size = UDim2.new(0, boxSize.X, 0, listHeight)
 
         expanded = true
 

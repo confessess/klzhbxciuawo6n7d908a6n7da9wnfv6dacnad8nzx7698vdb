@@ -44,7 +44,70 @@ end
 function Utils.WorldToScreen(position)
     if not Utils.Camera then return nil, false end
     local ok, result = pcall(function()
-        return Utils.Camera:WorldToScreenPoint(position)
+        
+-- ============================================================
+-- Drawing API
+-- ============================================================
+
+local DrawingObjects = {}
+
+function Utils.MakeDrawing(type, props)
+    local s, obj = pcall(Drawing.new, type)
+    if not s or not obj then return nil end
+    for k, v in pairs(props or {}) do 
+        pcall(function() obj[k] = v end) 
+    end
+    table.insert(DrawingObjects, obj)
+    return obj
+end
+
+function Utils.SetDrawing(obj, key, value)
+    if obj then pcall(function() obj[key] = value end) end
+end
+
+function Utils.RemoveDrawing(obj)
+    if obj then pcall(function() obj:Remove() end) end
+end
+
+function Utils.ClearDrawings()
+    for _, obj in ipairs(DrawingObjects) do
+        pcall(function() obj:Remove() end)
+    end
+    DrawingObjects = {}
+end
+
+-- Helper functions for common drawing types
+function Utils.DrawingLine(props)
+    return Utils.MakeDrawing("Line", props)
+end
+
+function Utils.DrawingText(props)
+    return Utils.MakeDrawing("Text", props)
+end
+
+function Utils.DrawingBox(props)
+    return Utils.MakeDrawing("Square", props)
+end
+
+function Utils.DrawingCircle(props)
+    return Utils.MakeDrawing("Circle", props)
+end
+
+function Utils.DrawingImage(props)
+    return Utils.MakeDrawing("Image", props)
+end
+
+-- World to Screen helper
+function Utils.W2S(position)
+    local s, x, y, z = pcall(function()
+        local v = Utils.Camera:WorldToViewportPoint(position)
+        return v.X, v.Y, v.Z
+    end)
+    if s and z and z > 0 then return Vector2.new(x, y), true, z end
+    return Vector2.new(-999, -999), false, 0
+end
+
+return Utils.Camera:WorldToScreenPoint(position)
     end)
     if not ok or not result then return nil, false end
     return Vector2.new(result.X, result.Y), result.Z > 0
@@ -139,7 +202,70 @@ end
 function Utils.IsTeammate(player)
     if not player or player == Utils.LocalPlayer then return true end
 
-    local ok1, lTeam = pcall(function() return Utils.LocalPlayer.Team end)
+    local ok1, lTeam = pcall(function() 
+-- ============================================================
+-- Drawing API
+-- ============================================================
+
+local DrawingObjects = {}
+
+function Utils.MakeDrawing(type, props)
+    local s, obj = pcall(Drawing.new, type)
+    if not s or not obj then return nil end
+    for k, v in pairs(props or {}) do 
+        pcall(function() obj[k] = v end) 
+    end
+    table.insert(DrawingObjects, obj)
+    return obj
+end
+
+function Utils.SetDrawing(obj, key, value)
+    if obj then pcall(function() obj[key] = value end) end
+end
+
+function Utils.RemoveDrawing(obj)
+    if obj then pcall(function() obj:Remove() end) end
+end
+
+function Utils.ClearDrawings()
+    for _, obj in ipairs(DrawingObjects) do
+        pcall(function() obj:Remove() end)
+    end
+    DrawingObjects = {}
+end
+
+-- Helper functions for common drawing types
+function Utils.DrawingLine(props)
+    return Utils.MakeDrawing("Line", props)
+end
+
+function Utils.DrawingText(props)
+    return Utils.MakeDrawing("Text", props)
+end
+
+function Utils.DrawingBox(props)
+    return Utils.MakeDrawing("Square", props)
+end
+
+function Utils.DrawingCircle(props)
+    return Utils.MakeDrawing("Circle", props)
+end
+
+function Utils.DrawingImage(props)
+    return Utils.MakeDrawing("Image", props)
+end
+
+-- World to Screen helper
+function Utils.W2S(position)
+    local s, x, y, z = pcall(function()
+        local v = Utils.Camera:WorldToViewportPoint(position)
+        return v.X, v.Y, v.Z
+    end)
+    if s and z and z > 0 then return Vector2.new(x, y), true, z end
+    return Vector2.new(-999, -999), false, 0
+end
+
+return Utils.LocalPlayer.Team end)
     local ok2, pTeam = pcall(function() return player.Team end)
     if ok1 and ok2 and lTeam and pTeam then
         return lTeam == pTeam
@@ -154,7 +280,70 @@ function Utils.IsTeammate(player)
         return tostring(ls) == tostring(ts)
     end
 
-    local ok3, ltc = pcall(function() return Utils.LocalPlayer.TeamColor end)
+    local ok3, ltc = pcall(function() 
+-- ============================================================
+-- Drawing API
+-- ============================================================
+
+local DrawingObjects = {}
+
+function Utils.MakeDrawing(type, props)
+    local s, obj = pcall(Drawing.new, type)
+    if not s or not obj then return nil end
+    for k, v in pairs(props or {}) do 
+        pcall(function() obj[k] = v end) 
+    end
+    table.insert(DrawingObjects, obj)
+    return obj
+end
+
+function Utils.SetDrawing(obj, key, value)
+    if obj then pcall(function() obj[key] = value end) end
+end
+
+function Utils.RemoveDrawing(obj)
+    if obj then pcall(function() obj:Remove() end) end
+end
+
+function Utils.ClearDrawings()
+    for _, obj in ipairs(DrawingObjects) do
+        pcall(function() obj:Remove() end)
+    end
+    DrawingObjects = {}
+end
+
+-- Helper functions for common drawing types
+function Utils.DrawingLine(props)
+    return Utils.MakeDrawing("Line", props)
+end
+
+function Utils.DrawingText(props)
+    return Utils.MakeDrawing("Text", props)
+end
+
+function Utils.DrawingBox(props)
+    return Utils.MakeDrawing("Square", props)
+end
+
+function Utils.DrawingCircle(props)
+    return Utils.MakeDrawing("Circle", props)
+end
+
+function Utils.DrawingImage(props)
+    return Utils.MakeDrawing("Image", props)
+end
+
+-- World to Screen helper
+function Utils.W2S(position)
+    local s, x, y, z = pcall(function()
+        local v = Utils.Camera:WorldToViewportPoint(position)
+        return v.X, v.Y, v.Z
+    end)
+    if s and z and z > 0 then return Vector2.new(x, y), true, z end
+    return Vector2.new(-999, -999), false, 0
+end
+
+return Utils.LocalPlayer.TeamColor end)
     local ok4, ptc = pcall(function() return player.TeamColor end)
     if ok3 and ok4 and ltc and ptc then
         local lc, tc = ltc.Name, ptc.Name
@@ -295,9 +484,6 @@ end
 -- Drawing helpers
 -- ------------------------------------------------------------
 
--- Drawing API DISABLED - causes crashes
--- Return nil for all Drawing functions
-
 function Utils.NewLine(thickness, color, transparency)
     return nil
 end
@@ -390,5 +576,68 @@ Players.PlayerRemoving:Connect(function(player)
     Utils.InvalidateEnemyCache()
     Utils.InvalidateRaycast()
 end)
+
+
+-- ============================================================
+-- Drawing API
+-- ============================================================
+
+local DrawingObjects = {}
+
+function Utils.MakeDrawing(type, props)
+    local s, obj = pcall(Drawing.new, type)
+    if not s or not obj then return nil end
+    for k, v in pairs(props or {}) do 
+        pcall(function() obj[k] = v end) 
+    end
+    table.insert(DrawingObjects, obj)
+    return obj
+end
+
+function Utils.SetDrawing(obj, key, value)
+    if obj then pcall(function() obj[key] = value end) end
+end
+
+function Utils.RemoveDrawing(obj)
+    if obj then pcall(function() obj:Remove() end) end
+end
+
+function Utils.ClearDrawings()
+    for _, obj in ipairs(DrawingObjects) do
+        pcall(function() obj:Remove() end)
+    end
+    DrawingObjects = {}
+end
+
+-- Helper functions for common drawing types
+function Utils.DrawingLine(props)
+    return Utils.MakeDrawing("Line", props)
+end
+
+function Utils.DrawingText(props)
+    return Utils.MakeDrawing("Text", props)
+end
+
+function Utils.DrawingBox(props)
+    return Utils.MakeDrawing("Square", props)
+end
+
+function Utils.DrawingCircle(props)
+    return Utils.MakeDrawing("Circle", props)
+end
+
+function Utils.DrawingImage(props)
+    return Utils.MakeDrawing("Image", props)
+end
+
+-- World to Screen helper
+function Utils.W2S(position)
+    local s, x, y, z = pcall(function()
+        local v = Utils.Camera:WorldToViewportPoint(position)
+        return v.X, v.Y, v.Z
+    end)
+    if s and z and z > 0 then return Vector2.new(x, y), true, z end
+    return Vector2.new(-999, -999), false, 0
+end
 
 return Utils
