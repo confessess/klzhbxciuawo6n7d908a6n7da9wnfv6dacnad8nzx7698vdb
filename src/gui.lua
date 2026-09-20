@@ -1,5 +1,5 @@
 -- ============================================================
--- RIVALS GUI - Product Faker Style with Icons (FIXED)
+-- RIVALS GUI - Product Faker Style with Icons (FIXED DROPDOWNS)
 -- ============================================================
 
 local TweenService = game:GetService("TweenService")
@@ -85,8 +85,6 @@ function Components.Section(page, text, order)
 end
 
 function Components.MasterSection(page, text, order, defaultOpen)
-    print("[GUI] Creating MasterSection:", text, "- FORCING CLOSED")
-
     local sectionFrame = Instance.new("Frame")
     sectionFrame.Size = UDim2.new(1, 0, 0, 28)
     sectionFrame.BackgroundTransparency = 1
@@ -120,7 +118,7 @@ function Components.MasterSection(page, text, order, defaultOpen)
     arrow.Size = UDim2.fromOffset(20, 20)
     arrow.Position = UDim2.new(1, -28, 0.5, -10)
     arrow.BackgroundTransparency = 1
-    arrow.Text = "▶"  -- ALWAYS start with right arrow (closed)
+    arrow.Text = "▶"
     arrow.TextColor3 = Theme.Text
     arrow.Font = Enum.Font.GothamBold
     arrow.TextSize = 10
@@ -130,7 +128,7 @@ function Components.MasterSection(page, text, order, defaultOpen)
     content.Size = UDim2.new(1, 0, 0, 0)
     content.BackgroundTransparency = 1
     content.ClipsDescendants = true
-    content.Visible = false  -- ALWAYS start hidden
+    content.Visible = false
     content.Parent = sectionFrame
 
     local contentLayout = Instance.new("UIListLayout")
@@ -138,7 +136,7 @@ function Components.MasterSection(page, text, order, defaultOpen)
     contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
     contentLayout.Parent = content
 
-    local isOpen = false  -- ALWAYS start closed
+    local isOpen = false
     local contentHeight = 0
 
     contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -161,16 +159,11 @@ function Components.MasterSection(page, text, order, defaultOpen)
             arrow.Text = "▶"
             content.Size = UDim2.new(1, 0, 0, 0)
             sectionFrame.Size = UDim2.new(1, 0, 0, 28)
-            -- Close all dropdowns
             for _, dd in ipairs(AllDropdowns) do
-                if dd.Close then
-                    dd.Close()
-                end
+                if dd.Close then dd.Close() end
             end
             task.delay(0.1, function()
-                if not isOpen then
-                    content.Visible = false
-                end
+                if not isOpen then content.Visible = false end
             end)
         end
     end
@@ -179,22 +172,7 @@ function Components.MasterSection(page, text, order, defaultOpen)
         setOpen(not isOpen)
     end)
 
-    -- Create a setOpen that ONLY works after user has manually interacted
-    local userInteracted = false
-    local wrappedSetOpen = function(open)
-        if not userInteracted then
-            -- Ignore setOpen calls during initialization
-            return
-        end
-        setOpen(open)
-    end
-
-    -- Mark user interaction when header is clicked
-    header.MouseButton1Click:Connect(function()
-        userInteracted = true
-    end)
-
-    return content, wrappedSetOpen
+    return content, setOpen
 end
 
 function Components.Toggle(page, label, default, callback, order)
@@ -310,32 +288,22 @@ function Components.Dropdown(page, label, options, default, callback, order)
     arrow.ZIndex = 11
     arrow.Parent = box
 
-    -- Create popup list - use a Frame container with ScrollingFrame inside for better control
-    local popupContainer = Instance.new("Frame")
-    popupContainer.Name = "DDPopup_" .. tostring(order or math.random(10000, 99999))
-    popupContainer.BackgroundColor3 = Theme.Background
-    popupContainer.BorderSizePixel = 0
-    popupContainer.Visible = false
-    popupContainer.ZIndex = 100
-    popupContainer.ClipsDescendants = true
-    popupContainer.Parent = ContentHost  -- Parent to ContentHost for stable positioning
-    corner(popupContainer, 6)
-    stroke(popupContainer)
-
+    -- Create popup list - parented to frame for simple positioning
     local popup = Instance.new("ScrollingFrame")
-    popup.Name = "ScrollList"
-    popup.Size = UDim2.new(1, -4, 1, -4)
-    popup.Position = UDim2.new(0, 2, 0, 2)
-    popup.BackgroundTransparency = 1
+    popup.Name = "DDPopup_" .. tostring(order or math.random(10000, 99999))
+    popup.BackgroundColor3 = Theme.Background
     popup.BorderSizePixel = 0
-    popup.ZIndex = 101
+    popup.Visible = false
+    popup.ZIndex = 100
     popup.ScrollBarThickness = 6
     popup.ScrollBarImageColor3 = Theme.TextDim
     popup.AutomaticCanvasSize = Enum.AutomaticSize.Y
     popup.CanvasSize = UDim2.fromScale(0, 0)
     popup.ScrollingDirection = Enum.ScrollingDirection.Y
     popup.ElasticBehavior = Enum.ElasticBehavior.Never
-    popup.Parent = popupContainer
+    popup.Parent = frame
+    corner(popup, 6)
+    stroke(popup)
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -357,9 +325,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     local function getOptions()
         if type(options) == "function" then
             local ok, result = pcall(options)
-            if ok and type(result) == "table" then
-                return result
-            end
+            if ok and type(result) == "table" then return result end
             return {"Error"}
         end
         return options or {}
@@ -367,9 +333,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
 
     local function clearOptions()
         for _, btn in ipairs(optionButtons) do
-            if btn and btn.Parent then
-                btn:Destroy()
-            end
+            if btn and btn.Parent then btn:Destroy() end
         end
         table.clear(optionButtons)
     end
@@ -377,7 +341,6 @@ function Components.Dropdown(page, label, options, default, callback, order)
     local function rebuild()
         clearOptions()
         local opts = getOptions()
-
         for i, opt in ipairs(opts) do
             local optBtn = Instance.new("TextButton")
             optBtn.Size = UDim2.new(1, 0, 0, 26)
@@ -411,17 +374,15 @@ function Components.Dropdown(page, label, options, default, callback, order)
                 if not ok then warn("[GUI] Dropdown error: " .. tostring(err)) end
                 close()
             end)
-
             table.insert(optionButtons, optBtn)
         end
-
         return #opts
     end
 
     local function close()
         expanded = false
-        popupContainer.Visible = false
-        popupContainer.Size = UDim2.new(0, 0, 0, 0)
+        popup.Visible = false
+        popup.Size = UDim2.new(0.55, 0, 0, 0)
         if closeConnection then
             closeConnection:Disconnect()
             closeConnection = nil
@@ -429,78 +390,49 @@ function Components.Dropdown(page, label, options, default, callback, order)
     end
 
     local function open()
-        -- Close all other dropdowns first
         for _, dd in ipairs(AllDropdowns) do
-            if dd ~= control and dd.Close then
-                dd.Close()
-            end
+            if dd ~= control and dd.Close then dd.Close() end
         end
-
         local optCount = rebuild()
 
-        -- Position popupContainer relative to ContentHost using absolute coordinates
-        local boxPos = box.AbsolutePosition
-        local boxSize = box.AbsoluteSize
-        local hostPos = ContentHost.AbsolutePosition
-
-        -- Calculate position relative to ContentHost
-        local relX = boxPos.X - hostPos.X
-        local relY = boxPos.Y - hostPos.Y + boxSize.Y + 6
-
-        popupContainer.Position = UDim2.new(0, relX, 0, relY)
-        popupContainer.Size = UDim2.new(0, boxSize.X, 0, 0)
-        popupContainer.Visible = true
+        -- Position popup at the bottom of the frame using offset
+        -- Frame is 32px tall, box is at Y=2 with height 28
+        -- So popup should start at Y=34 (2 + 28 + 4 gap)
+        popup.Position = UDim2.new(0.45, 0, 0, 34)
+        popup.Size = UDim2.new(0.55, 0, 0, 0)
+        popup.Visible = true
 
         local listHeight = math.min(optCount * 30 + 10, 280)
-        popupContainer.Size = UDim2.new(0, boxSize.X, 0, listHeight)
-
+        popup.Size = UDim2.new(0.55, 0, 0, listHeight)
         expanded = true
 
-        -- Close on outside click
         closeConnection = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local mousePos = UserInputService:GetMouseLocation()
-                local popupPos = popupContainer.AbsolutePosition
-                local popupSize = popupContainer.AbsoluteSize
+                local popupPos = popup.AbsolutePosition
+                local popupSize = popup.AbsoluteSize
                 local boxPos = box.AbsolutePosition
                 local boxSize = box.AbsoluteSize
-
                 local inPopup = mousePos.X >= popupPos.X and mousePos.X <= popupPos.X + popupSize.X 
                     and mousePos.Y >= popupPos.Y and mousePos.Y <= popupPos.Y + popupSize.Y
                 local inBox = mousePos.X >= boxPos.X and mousePos.X <= boxPos.X + boxSize.X 
                     and mousePos.Y >= boxPos.Y and mousePos.Y <= boxPos.Y + boxSize.Y
-
-                if not inPopup and not inBox then
-                    close()
-                end
+                if not inPopup and not inBox then close() end
             end
         end)
     end
 
     box.MouseButton1Click:Connect(function()
-        if expanded then
-            close()
-        else
-            open()
-        end
+        if expanded then close() else open() end
     end)
 
     local control = {
-        Set = function(v) 
-            currentValue = v 
-            valueLbl.Text = tostring(v) 
-        end, 
-        Get = function() 
-            return currentValue 
-        end,
+        Set = function(v) currentValue = v valueLbl.Text = tostring(v) end,
+        Get = function() return currentValue end,
         Close = close,
-        IsOpen = function() 
-            return expanded 
-        end
+        IsOpen = function() return expanded end
     }
-
     table.insert(AllDropdowns, control)
-
     return control
 end
 
@@ -648,7 +580,6 @@ function Components.Keybind(page, label, default, callback, order)
         if listening then return end
         listening = true
         keyBtn.Text = "..."
-
         local conn
         conn = UserInputService.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -743,15 +674,11 @@ local function switchTab(name)
         if child:IsA("TextButton") then
             local isActive = (child.Name == "Tab_" .. name)
             local icon = child:FindFirstChild("Icon")
-            if icon then
-                tween(icon, {ImageColor3 = isActive and Theme.Text or Theme.TextDim})
-            end
+            if icon then tween(icon, {ImageColor3 = isActive and Theme.Text or Theme.TextDim}) end
             child.BackgroundColor3 = isActive and Theme.ElementHover or Theme.Element
         end
     end
-    if GUI.UpdatePreviewVisibility then
-        GUI.UpdatePreviewVisibility()
-    end
+    if GUI.UpdatePreviewVisibility then GUI.UpdatePreviewVisibility() end
 end
 
 local function createTab(name, iconId, order)
@@ -779,9 +706,7 @@ local function createTab(name, iconId, order)
     icon.ScaleType = Enum.ScaleType.Fit
     icon.Parent = btn
 
-    btn.MouseButton1Click:Connect(function()
-        switchTab(name)
-    end)
+    btn.MouseButton1Click:Connect(function() switchTab(name) end)
 
     local page = Instance.new("ScrollingFrame")
     page.Name = "Page_" .. name
@@ -814,11 +739,7 @@ end
 
 -- Drag functionality
 local function dragify(Frame)
-    local dragToggle = nil
-    local dragSpeed = 0.15
-    local dragInput = nil
-    local dragStart = nil
-    local startPos = nil
+    local dragToggle, dragSpeed, dragInput, dragStart, startPos = nil, 0.15, nil, nil, nil
 
     local function updateInput(input)
         local Delta = input.Position - dragStart
@@ -832,9 +753,7 @@ local function dragify(Frame)
             dragStart = input.Position
             startPos = Frame.Position
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragToggle = false
-                end
+                if input.UserInputState == Enum.UserInputState.End then dragToggle = false end
             end)
         end
     end)
@@ -846,9 +765,7 @@ local function dragify(Frame)
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragToggle then
-            updateInput(input)
-        end
+        if input == dragInput and dragToggle then updateInput(input) end
     end)
 end
 
@@ -872,12 +789,8 @@ end
 
 GUI.UpdatePreviewVisibility = function()
     local ok, err = pcall(function()
-        if GUI.SkinPreviewFrame then
-            GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and IsOpen
-        end
-        if GUI.ESPPreviewFrame then
-            GUI.ESPPreviewFrame.Visible = (ActiveTab == "Visuals") and IsOpen
-        end
+        if GUI.SkinPreviewFrame then GUI.SkinPreviewFrame.Visible = (ActiveTab == "Skins") and IsOpen end
+        if GUI.ESPPreviewFrame then GUI.ESPPreviewFrame.Visible = (ActiveTab == "Visuals") and IsOpen end
         updatePreviewPositions()
     end)
 end
@@ -1035,9 +948,7 @@ local function build()
     corner(closeBtn, 6)
     stroke(closeBtn)
 
-    closeBtn.MouseButton1Click:Connect(function()
-        GUI.ToggleMenu()
-    end)
+    closeBtn.MouseButton1Click:Connect(function() GUI.ToggleMenu() end)
 
     TabBar = Instance.new("Frame")
     TabBar.Size = UDim2.new(0, 570, 0, 28)
@@ -1086,21 +997,12 @@ end
 function GUI.ToggleMenu()
     if IsLoading then return end
     IsOpen = not IsOpen
-    if GUI.UpdatePreviewVisibility then
-        GUI.UpdatePreviewVisibility()
-    end
-    if MainFrame then
-        MainFrame.Visible = IsOpen
-    end
+    if GUI.UpdatePreviewVisibility then GUI.UpdatePreviewVisibility() end
+    if MainFrame then MainFrame.Visible = IsOpen end
 end
 
-function GUI.IsOpen()
-    return IsOpen
-end
-
-function GUI.GetPage(name)
-    return Pages[name]
-end
+function GUI.IsOpen() return IsOpen end
+function GUI.GetPage(name) return Pages[name] end
 
 function GUI.Cleanup()
     if ScreenGui then ScreenGui:Destroy() end
@@ -1109,7 +1011,6 @@ end
 
 function GUI.Init(deps)
     print("[GUI] Initializing...")
-
     deps = deps or {}
     Config = deps.Config
     Utils = deps.Utils
@@ -1119,43 +1020,30 @@ function GUI.Init(deps)
         build()
         createPreviewWindows()
     end)
-    if not ok then
-        warn("[GUI] Error: " .. tostring(err))
-    end
+    if not ok then warn("[GUI] Error: " .. tostring(err)) end
 
     local settings = GUI.GetPage("Settings")
     if settings then
         local C = GUI.Components
-
         local savedKeybind = Enum.KeyCode.RightControl
         if Config and Config.Get then
             local saved = Config.Get("MenuKeybind")
             if saved then
-                local ok, parsed = pcall(function()
-                    return Enum.KeyCode[saved]
-                end)
-                if ok and parsed then
-                    savedKeybind = parsed
-                end
+                local ok, parsed = pcall(function() return Enum.KeyCode[saved] end)
+                if ok and parsed then savedKeybind = parsed end
             end
         end
 
         C.Section(settings, "Menu", 1)
         C.Keybind(settings, "Menu Keybind", savedKeybind, function(k)
             print("[GUI] Keybind changed to: " .. tostring(k))
-            if Config and Config.Set then
-                Config.Set("MenuKeybind", tostring(k):gsub("Enum.KeyCode.", ""))
-            end
+            if Config and Config.Set then Config.Set("MenuKeybind", tostring(k):gsub("Enum.KeyCode.", "")) end
             MenuKeybind = k
         end, 2)
 
         C.Section(settings, "Config", 10)
-        C.Button(settings, "Reset Config", function()
-            if Config and Config.Reset then Config.Reset() end
-        end, 11, false)
-        C.Button(settings, "Unload Script", function()
-            if Core and Core.Unload then Core.Unload() end
-        end, 12, true)
+        C.Button(settings, "Reset Config", function() if Config and Config.Reset then Config.Reset() end end, 11, false)
+        C.Button(settings, "Unload Script", function() if Core and Core.Unload then Core.Unload() end end, 12, true)
     end
 
     IsLoading = true

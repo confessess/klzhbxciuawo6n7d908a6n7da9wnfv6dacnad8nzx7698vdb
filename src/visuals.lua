@@ -1207,6 +1207,21 @@ function Visuals.Init(deps)
     Core = deps.Core
     Utils = deps.Utils
 
+    -- Wait for Utils to be available
+    if not Utils then
+        warn("[Visuals] Utils not available, waiting...")
+        local startTime = tick()
+        while not Utils and tick() - startTime < 5 do
+            task.wait(0.1)
+            Utils = deps.Utils
+        end
+    end
+
+    if not Utils then
+        warn("[Visuals] Utils still not available, ESP will not work")
+        return
+    end
+
     if not GUI then 
         print("[Visuals] No GUI module")
         return 
