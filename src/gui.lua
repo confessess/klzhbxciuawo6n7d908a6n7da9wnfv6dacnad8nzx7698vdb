@@ -438,21 +438,18 @@ function Components.Dropdown(page, label, options, default, callback, order)
 
         local optCount = rebuild()
 
-        -- Calculate position based on frame's absolute position
-        local framePos = frame.AbsolutePosition
-        local frameSize = frame.AbsoluteSize
-        local pagePos = page.AbsolutePosition
+        -- Get absolute positions
+        local boxPos = box.AbsolutePosition
+        local boxSize = box.AbsoluteSize
 
-        -- Position popup at same X as box, but below frame with 4px gap
-        local relX = framePos.X - pagePos.X + (frameSize.X * 0.45)
-        local relY = framePos.Y - pagePos.Y + frameSize.Y + 4
-
-        popupContainer.Position = UDim2.new(0, relX, 0, relY)
-        popupContainer.Size = UDim2.new(0, frameSize.X * 0.55, 0, 0)
+        -- Position popup using OFFSET from absolute position
+        -- This ensures it's always below the button regardless of parent scrolling
+        popupContainer.Position = UDim2.new(0, boxPos.X, 0, boxPos.Y + boxSize.Y + 6)
+        popupContainer.Size = UDim2.new(0, boxSize.X, 0, 0)
         popupContainer.Visible = true
 
         local listHeight = math.min(optCount * 30 + 10, 280)
-        popupContainer.Size = UDim2.new(0, frameSize.X * 0.55, 0, listHeight)
+        popupContainer.Size = UDim2.new(0, boxSize.X, 0, listHeight)
 
         expanded = true
 
