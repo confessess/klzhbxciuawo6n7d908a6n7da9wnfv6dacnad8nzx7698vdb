@@ -61,7 +61,19 @@ Visuals.Settings = {
         Transparency = 0.5,
     },
 
-    -- Custom Chams
+    -- Player Chams (Body Replacement)
+    PlayerChams = {
+        Enabled = false,
+        Material = "ForceField",
+        Color = Color3.fromRGB(0, 255, 255),
+        SecondaryColor = Color3.fromRGB(255, 0, 255),
+        Transparency = 0.3,
+        Glow = true,
+        Rainbow = false,
+        Pulse = false,
+    },
+
+    -- Custom Chams (Highlight Styles)
     ChamsStyle = {
         Enabled = false,
         Style = "Hologram",
@@ -91,6 +103,7 @@ Visuals.Settings = {
 -- Objects
 local ESPObjects = {}
 local AuraObjects = {}
+local ChamObjects = {}
 local ScreenFXObjects = {}
 local WeatherObjects = {}
 
@@ -184,6 +197,166 @@ local function CreateESP(player, character)
         healthFill = healthFill,
         distLabel = distLabel,
     }
+end
+
+-- ============================================================
+-- PLAYER CHAMS (BODY REPLACEMENT)
+-- ============================================================
+
+local CHAM_MATERIALS = {
+    "ForceField", "Glass", "Neon", "SmoothPlastic", "Foil",
+    "Ice", "CrackedLava", "DiamondPlate", "Sand", "Brick",
+    "Granite", "Marble", "Pebble", "Rust", "Wood",
+    "WoodPlanks", "Cobblestone", "Concrete", "Metal", "Grass"
+}
+
+local rainbowHue = 0
+
+local function GetRainbowColor()
+    rainbowHue = (rainbowHue + 0.01) % 1
+    return Color3.fromHSV(rainbowHue, 1, 1)
+end
+
+local function ApplyPlayerChams(character, data)
+    local S = Visuals.Settings.PlayerChams
+
+    if not S.Enabled then
+        -- Restore original materials
+        for part, original in pairs(data.originals) do
+            if part and part.Parent then
+                part.Material = original.Material
+                part.Color = original.Color
+                part.Transparency = original.Transparency
+            end
+        end
+        if data.highlight then
+            data.highlight:Destroy()
+            data.highlight = nil
+        end
+        if data.glowLight then
+            data.glowLight:Destroy()
+            data.glowLight = nil
+        end
+        return
+    end
+
+    local color = S.Color
+    if S.Rainbow then
+        color = GetRainbowColor()
+    end
+
+    -- Apply to all body parts
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            -- Store original if not already stored
+            if not data.originals[part] then
+                data.originals[part] = {
+                    Material = part.Material,
+                    Color = part.Color,
+                    Transparency = part.Transparency
+                }
+            end
+
+            -- Apply cham material
+            local material = Enum.Material[S.Material]
+            part.Material = material
+
+            -- Special material handling
+            if S.Material == "ForceField" then
+                part.Color = color
+                part.Transparency = 0.3 + math.sin(tick() * 2) * 0.1
+            elseif S.Material == "Glass" then
+                part.Color = Color3.new(1, 1, 1)
+                part.Transparency = 0.5
+            elseif S.Material == "Neon" then
+                part.Color = color
+                part.Transparency = S.Transparency
+            elseif S.Material == "Ice" then
+                part.Color = Color3.fromRGB(200, 230, 255)
+                part.Transparency = 0.2
+            elseif S.Material == "CrackedLava" then
+                part.Color = Color3.fromRGB(255, 100, 0)
+                part.Transparency = 0
+            else
+                part.Color = color
+                part.Transparency = S.Transparency
+            end
+
+            -- Pulse effect
+            if S.Pulse then
+                local pulse = math.sin(tick() * 3) * 0.1
+                part.Transparency = math.clamp(part.Transparency + pulse, 0, 1)
+            end
+        end
+    end
+
+    -- Add highlight for extra effect
+    if S.Glow and not data.highlight then
+        local highlight = Instance.new("Highlight")
+        highlight.Adornee = character
+        highlight.FillColor = color
+        highlight.OutlineColor = S.SecondaryColor
+        highlight.FillTransparency = 0.7
+        highlight.OutlineTransparency = 0
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Parent = character
+        data.highlight = highlight
+    elseif data.highlight then
+        data.highlight.FillColor = color
+        data.highlight.OutlineColor = S.SecondaryColor
+    end
+
+    -- Add glow light
+    if S.Glow and not data.glowLight then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local light = Instance.new("PointLight")
+            light.Color = color
+            light.Range = 8
+            light.Brightness = 2
+            light.Parent = root
+            data.glowLight = light
+        end
+    elseif data.glowLight then
+        data.glowLight.Color = color
+    end
+end
+
+local function CreatePlayerChams(player, character)
+    if ChamObjects[character] then return end
+
+    ChamObjects[character] = {
+        player = player,
+        originals = {},
+        highlight = nil,
+        glowLight = nil,
+    }
+end
+
+local function UpdatePlayerChams()
+    for character, data in pairs(ChamObjects) do
+        if not character or not character.Parent then
+            ChamObjects[character] = nil
+        else
+            ApplyPlayerChams(character, data)
+        end
+    end
+end
+
+local function CleanupPlayerChams(character)
+    if ChamObjects[character] then
+        local data = ChamObjects[character]
+        for part, original in pairs(data.originals) do
+            if part and part.Parent then
+                part.Material = original.Material
+                part.Color = original.Color
+                part.Transparency = original.Transparency
+            end
+        end
+        if data.highlight then data.highlight:Destroy() end
+        if data.glowLight then data.glowLight:Destroy() end
+        ChamObjects[character] = nil
+    end
 end
 
 -- ============================================================
@@ -441,7 +614,7 @@ local function UpdateAuras()
 end
 
 -- ============================================================
--- CUSTOM CHAMS STYLES
+-- CUSTOM CHAMS STYLES (Highlight)
 -- ============================================================
 
 local function ApplyCustomChams(character, data)
@@ -633,6 +806,7 @@ local function OnPlayerAdded(player)
 
         CreateESP(player, character)
         CreateAura(player, character)
+        CreatePlayerChams(player, character)
     end)
 
     if player.Character then
@@ -642,6 +816,7 @@ local function OnPlayerAdded(player)
 
             CreateESP(player, player.Character)
             CreateAura(player, player.Character)
+            CreatePlayerChams(player, player.Character)
         end)
     end
 
@@ -656,6 +831,8 @@ local function OnPlayerAdded(player)
             if AuraObjects[character].folder then AuraObjects[character].folder:Destroy() end
             AuraObjects[character] = nil
         end
+
+        CleanupPlayerChams(character)
     end)
 end
 
@@ -678,6 +855,7 @@ Players.PlayerRemoving:Connect(function(player)
             if AuraObjects[player.Character].folder then AuraObjects[player.Character].folder:Destroy() end
             AuraObjects[player.Character] = nil
         end
+        CleanupPlayerChams(player.Character)
     end
 end)
 
@@ -755,6 +933,7 @@ function Visuals.Update()
 
     -- Update other features
     UpdateAuras()
+    UpdatePlayerChams()
     ApplyArmChams()
     UpdateWeather()
 end
@@ -802,7 +981,7 @@ function Visuals.Init(deps)
     -- ========================================
     -- ESP MASTER SECTION
     -- ========================================
-    local espSection, setEspOpen = C.MasterSection(page, "ESP", 1, S.ESP.Enabled)
+    local espSection, setEspOpen = C.MasterSection(page, "ESP", 1, false)
 
     C.Toggle(espSection, "Enabled", S.ESP.Enabled, function(v) 
         S.ESP.Enabled = v 
@@ -833,60 +1012,94 @@ function Visuals.Init(deps)
         SetConfig("ESP_MaxDistance", v)
     end, 8)
 
-    
+    -- ========================================
+    -- PLAYER CHAMS MASTER SECTION (BODY REPLACEMENT)
+    -- ========================================
+    local chamsSection, setChamsOpen = C.MasterSection(page, "Player Chams", 10, false)
+
+    C.Toggle(chamsSection, "Enabled", S.PlayerChams.Enabled, function(v) 
+        S.PlayerChams.Enabled = v
+    end, 11)
+
+    C.Dropdown(chamsSection, "Material", CHAM_MATERIALS, S.PlayerChams.Material, function(v) 
+        S.PlayerChams.Material = v
+    end, 12)
+
+    -- Color pickers (using text boxes for hex input)
+    C.TextBox(chamsSection, "Color (RGB)", "255,0,255", tostring(S.PlayerChams.Color), function(v)
+        local r, g, b = v:match("(%d+),(%d+),(%d+)")
+        if r and g and b then
+            S.PlayerChams.Color = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+        end
+    end, 13)
+
+    C.TextBox(chamsSection, "Outline Color", "255,255,255", tostring(S.PlayerChams.SecondaryColor), function(v)
+        local r, g, b = v:match("(%d+),(%d+),(%d+)")
+        if r and g and b then
+            S.PlayerChams.SecondaryColor = Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+        end
+    end, 14)
+
+    C.Slider(chamsSection, "Transparency", 0, 100, S.PlayerChams.Transparency * 100, function(v) 
+        S.PlayerChams.Transparency = v / 100
+    end, 15)
+
+    C.Toggle(chamsSection, "Glow", S.PlayerChams.Glow, function(v) 
+        S.PlayerChams.Glow = v
+    end, 16)
+
+    C.Toggle(chamsSection, "Rainbow", S.PlayerChams.Rainbow, function(v) 
+        S.PlayerChams.Rainbow = v
+    end, 17)
+
+    C.Toggle(chamsSection, "Pulse", S.PlayerChams.Pulse, function(v) 
+        S.PlayerChams.Pulse = v
+    end, 18)
 
     -- ========================================
     -- PLAYER AURA MASTER SECTION
     -- ========================================
-    local auraSection, setAuraOpen = C.MasterSection(page, "Player Aura", 10, S.Aura.Enabled)
+    local auraSection, setAuraOpen = C.MasterSection(page, "Player Aura", 20, false)
 
     C.Toggle(auraSection, "Enabled", S.Aura.Enabled, function(v) 
         S.Aura.Enabled = v
-    end, 11)
-    C.Dropdown(auraSection, "Aura Type", {"Glow", "Hexagon", "DataStream", "EnergyPulse", "Hologram", "ScanLines"}, S.Aura.Type, function(v) S.Aura.Type = v end, 12)
-    C.Slider(auraSection, "Size", 1, 20, S.Aura.Size, function(v) S.Aura.Size = v end, 13)
-    C.Slider(auraSection, "Speed", 1, 10, S.Aura.Speed, function(v) S.Aura.Speed = v end, 14)
-    C.Slider(auraSection, "Intensity", 10, 200, S.Aura.Intensity, function(v) S.Aura.Intensity = v end, 15)
-
-    
-
-    -- ========================================
-    -- CUSTOM CHAMS MASTER SECTION
-    -- ========================================
-    local chamsSection, setChamsOpen = C.MasterSection(page, "Custom Chams", 20, S.ChamsStyle.Enabled)
-
-    C.Toggle(chamsSection, "Enabled", S.ChamsStyle.Enabled, function(v) 
-        S.ChamsStyle.Enabled = v
     end, 21)
-    C.Dropdown(chamsSection, "Style", {"Hologram", "Neon", "Ghost", "Cyber"}, S.ChamsStyle.Style, function(v) S.ChamsStyle.Style = v end, 22)
-    C.Slider(chamsSection, "Glow Intensity", 0, 10, S.ChamsStyle.GlowIntensity, function(v) S.ChamsStyle.GlowIntensity = v end, 23)
-    C.Slider(chamsSection, "Scan Speed", 0, 10, S.ChamsStyle.ScanSpeed, function(v) S.ChamsStyle.ScanSpeed = v end, 24)
+    C.Dropdown(auraSection, "Aura Type", {"Glow", "Hexagon", "DataStream", "EnergyPulse", "Hologram", "ScanLines"}, S.Aura.Type, function(v) S.Aura.Type = v end, 22)
+    C.Slider(auraSection, "Size", 1, 20, S.Aura.Size, function(v) S.Aura.Size = v end, 23)
+    C.Slider(auraSection, "Speed", 1, 10, S.Aura.Speed, function(v) S.Aura.Speed = v end, 24)
+    C.Slider(auraSection, "Intensity", 10, 200, S.Aura.Intensity, function(v) S.Aura.Intensity = v end, 25)
 
-   
+    -- ========================================
+    -- CUSTOM CHAMS MASTER SECTION (HIGHLIGHT STYLES)
+    -- ========================================
+    local customChamsSection, setCustomChamsOpen = C.MasterSection(page, "Custom Chams", 30, false)
+
+    C.Toggle(customChamsSection, "Enabled", S.ChamsStyle.Enabled, function(v) 
+        S.ChamsStyle.Enabled = v
+    end, 31)
+    C.Dropdown(customChamsSection, "Style", {"Hologram", "Neon", "Ghost", "Cyber"}, S.ChamsStyle.Style, function(v) S.ChamsStyle.Style = v end, 32)
+    C.Slider(customChamsSection, "Glow Intensity", 0, 10, S.ChamsStyle.GlowIntensity, function(v) S.ChamsStyle.GlowIntensity = v end, 33)
+    C.Slider(customChamsSection, "Scan Speed", 0, 10, S.ChamsStyle.ScanSpeed, function(v) S.ChamsStyle.ScanSpeed = v end, 34)
 
     -- ========================================
     -- ARM CHAMS MASTER SECTION
     -- ========================================
-    local armSection, setArmOpen = C.MasterSection(page, "Arm Chams", 30, S.ArmChams.Enabled)
+    local armSection, setArmOpen = C.MasterSection(page, "Arm Chams", 40, false)
 
     C.Toggle(armSection, "Enabled", S.ArmChams.Enabled, function(v) 
         S.ArmChams.Enabled = v
-    end, 31)
-
-   
+    end, 41)
 
     -- ========================================
     -- WEATHER MASTER SECTION
     -- ========================================
-    local weatherSection, setWeatherOpen = C.MasterSection(page, "Weather", 40, S.Weather.Enabled)
+    local weatherSection, setWeatherOpen = C.MasterSection(page, "Weather", 50, false)
 
     C.Toggle(weatherSection, "Enabled", S.Weather.Enabled, function(v) 
         S.Weather.Enabled = v
-    end, 41)
-    C.Dropdown(weatherSection, "Type", {"Rain", "Snow", "Storm"}, S.Weather.Type, function(v) S.Weather.Type = v end, 42)
-    C.Slider(weatherSection, "Intensity", 10, 200, S.Weather.Intensity, function(v) S.Weather.Intensity = v end, 43)
-
-   
+    end, 51)
+    C.Dropdown(weatherSection, "Type", {"Rain", "Snow", "Storm"}, S.Weather.Type, function(v) S.Weather.Type = v end, 52)
+    C.Slider(weatherSection, "Intensity", 10, 200, S.Weather.Intensity, function(v) S.Weather.Intensity = v end, 53)
 
     print("[Visuals] GUI registered")
 end
@@ -902,6 +1115,11 @@ function Visuals.Cleanup()
         if data.folder then data.folder:Destroy() end
     end
     table.clear(AuraObjects)
+
+    for character, data in pairs(ChamObjects) do
+        CleanupPlayerChams(character)
+    end
+    table.clear(ChamObjects)
 
     if WeatherObjects.part then WeatherObjects.part:Destroy() end
 end
