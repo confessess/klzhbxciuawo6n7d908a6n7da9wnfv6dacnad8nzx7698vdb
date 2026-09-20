@@ -1,15 +1,16 @@
 -- ============================================================
--- Rivals Modular -- Bootstrap (GitHub version)
+-- Rivals Modular -- Bootstrap (GitHub version with cache busting)
 -- ============================================================
 
 if _G.__rivals_core then return end
 
 local REPO_BASE = "https://raw.githubusercontent.com/confessess/klzhbxciuawo6n7d908a6n7da9wnfv6dacnad8nzx7698vdb/main/src/"
+local CACHE_BUST = "?t=" .. tostring(os.time())  -- Add timestamp to bust cache
 
 local function fetch(url)
     local result = nil
     pcall(function()
-        result = game:HttpGet(url)
+        result = game:HttpGet(url .. CACHE_BUST)
     end)
     if typeof(result) == "string" and #result > 10 and not result:find("<!DOCTYPE") then
         return result
