@@ -1,5 +1,5 @@
 -- ============================================================
--- RIVALS GUI - Product Faker Style with Icons (Standalone)
+-- RIVALS GUI - Product Faker Style with Icons (FIXED)
 -- ============================================================
 
 local TweenService = game:GetService("TweenService")
@@ -36,6 +36,9 @@ local ActiveTab = nil
 local IsOpen = false
 local IsLoading = true
 local MenuKeybind = Enum.KeyCode.RightControl
+
+-- Track all dropdowns for global close
+local AllDropdowns = {}
 
 local function tween(obj, props)
     TweenService:Create(obj, TweenInfo.new(0.15), props):Play()
@@ -82,7 +85,9 @@ function Components.Section(page, text, order)
 end
 
 function Components.MasterSection(page, text, order, defaultOpen)
-    -- FORCE defaultOpen to be a proper boolean
+    print("[GUI] Creating MasterSection:", text, "defaultOpen:", tostring(defaultOpen))
+
+    -- FORCE defaultOpen to boolean false unless explicitly true
     local startOpen = false
     if defaultOpen == true then
         startOpen = true
@@ -131,7 +136,7 @@ function Components.MasterSection(page, text, order, defaultOpen)
     content.Size = UDim2.new(1, 0, 0, 0)
     content.BackgroundTransparency = 1
     content.ClipsDescendants = true
-    content.Visible = startOpen  -- EXPLICIT boolean
+    content.Visible = false  -- ALWAYS start hidden
     content.Parent = sectionFrame
 
     local contentLayout = Instance.new("UIListLayout")
@@ -139,7 +144,7 @@ function Components.MasterSection(page, text, order, defaultOpen)
     contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
     contentLayout.Parent = content
 
-    local isOpen = startOpen  -- EXPLICIT boolean
+    local isOpen = false  -- ALWAYS start closed
     local contentHeight = 0
 
     contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -151,8 +156,8 @@ function Components.MasterSection(page, text, order, defaultOpen)
     end)
 
     local function setOpen(open)
-        -- FORCE to boolean
         isOpen = (open == true)
+        print("[GUI] MasterSection", text, "setOpen:", tostring(isOpen))
 
         if isOpen then
             arrow.Text = "▼"
@@ -163,10 +168,10 @@ function Components.MasterSection(page, text, order, defaultOpen)
             arrow.Text = "▶"
             content.Size = UDim2.new(1, 0, 0, 0)
             sectionFrame.Size = UDim2.new(1, 0, 0, 28)
-            -- Close all dropdowns in this section
-            for _, child in ipairs(page:GetChildren()) do
-                if child.Name:find("DDPopup_") then
-                    child.Visible = false
+            -- Close all dropdowns
+            for _, dd in ipairs(AllDropdowns) do
+                if dd.Close then
+                    dd.Close()
                 end
             end
             task.delay(0.1, function()
@@ -181,8 +186,12 @@ function Components.MasterSection(page, text, order, defaultOpen)
         setOpen(not isOpen)
     end)
 
-    -- EXPLICITLY set initial state
-    setOpen(startOpen)
+    -- If startOpen is true, open it after a frame
+    if startOpen then
+        task.defer(function()
+            setOpen(true)
+        end)
+    end
 
     return content, setOpen
 end
@@ -246,10 +255,9 @@ function Components.Toggle(page, label, default, callback, order)
     return {Set = function(v) state = v end, Get = function() return state end}
 end
 
--- Track all dropdowns for cleanup
-local AllDropdowns = {}
-
 function Components.Dropdown(page, label, options, default, callback, order)
+    print("[GUI] Creating Dropdown:", label)
+
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 32)
     frame.BackgroundTransparency = 1
@@ -303,18 +311,18 @@ function Components.Dropdown(page, label, options, default, callback, order)
     arrow.ZIndex = 11
     arrow.Parent = box
 
-    -- Create popup but keep it hidden and parented to frame initially
+    -- Create popup list - parented to frame, positioned below
     local popup = Instance.new("ScrollingFrame")
     popup.Name = "DDPopup_" .. tostring(order or math.random(10000, 99999))
     popup.BackgroundColor3 = Theme.Background
     popup.BorderSizePixel = 0
-    popup.Visible = false
-    popup.ZIndex = 5000
+    popup.Visible = false  -- START CLOSED
+    popup.ZIndex = 100
     popup.ScrollBarThickness = 4
     popup.ScrollBarImageColor3 = Theme.Stroke
     popup.AutomaticCanvasSize = Enum.AutomaticSize.Y
     popup.CanvasSize = UDim2.fromScale(0, 0)
-    popup.Parent = frame  -- Parent to frame, not ScreenGui!
+    popup.Parent = frame
     corner(popup, 6)
     stroke(popup)
 
@@ -367,7 +375,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
             optBtn.Text = ""
             optBtn.AutoButtonColor = false
             optBtn.LayoutOrder = i
-            optBtn.ZIndex = 5002
+            optBtn.ZIndex = 101
             optBtn.Parent = popup
             corner(optBtn, 4)
 
@@ -380,7 +388,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
             optLbl.Font = Enum.Font.GothamMedium
             optLbl.TextSize = 12
             optLbl.TextXAlignment = Enum.TextXAlignment.Left
-            optLbl.ZIndex = 5003
+            optLbl.ZIndex = 102
             optLbl.Parent = optBtn
 
             optBtn.MouseButton1Click:Connect(function()
@@ -400,6 +408,7 @@ function Components.Dropdown(page, label, options, default, callback, order)
     end
 
     local function close()
+        print("[GUI] Closing dropdown:", label)
         expanded = false
         popup.Visible = false
         popup.Size = UDim2.new(0.55, 0, 0, 0)
@@ -410,17 +419,18 @@ function Components.Dropdown(page, label, options, default, callback, order)
     end
 
     local function open()
-        -- Close all other dropdown popups on the page
-        for _, child in ipairs(page:GetDescendants()) do
-            if child.Name:find("DDPopup_") and child ~= popup then
-                child.Visible = false
-                child.Size = UDim2.new(0.55, 0, 0, 0)
+        print("[GUI] Opening dropdown:", label)
+
+        -- Close all other dropdowns first
+        for _, dd in ipairs(AllDropdowns) do
+            if dd ~= control and dd.Close then
+                dd.Close()
             end
         end
 
         local optCount = rebuild()
 
-        -- Position below the box with proper spacing
+        -- Position popup BELOW the box with 36px offset
         popup.Position = UDim2.new(0.45, 0, 0, 36)
         popup.Size = UDim2.new(0.55, 0, 0, 0)
         popup.Visible = true
@@ -459,7 +469,8 @@ function Components.Dropdown(page, label, options, default, callback, order)
         end
     end)
 
-    return {
+    -- Create control interface
+    local control = {
         Set = function(v) 
             currentValue = v 
             valueLbl.Text = tostring(v) 
@@ -472,6 +483,11 @@ function Components.Dropdown(page, label, options, default, callback, order)
             return expanded 
         end
     }
+
+    -- Register in global dropdown list
+    table.insert(AllDropdowns, control)
+
+    return control
 end
 
 function Components.Slider(page, label, min, max, default, callback, order)
@@ -955,6 +971,8 @@ end
 
 -- Build main GUI
 local function build()
+    print("[GUI] Building GUI...")
+
     local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 
     ScreenGui = Instance.new("ScreenGui")
@@ -1048,6 +1066,7 @@ local function build()
     end)
 
     switchTab("Combat")
+    print("[GUI] GUI built successfully!")
 end
 
 function GUI.ToggleMenu()
@@ -1074,8 +1093,9 @@ function GUI.Cleanup()
     if PreviewGui then PreviewGui:Destroy() end
 end
 
--- Standalone init (no external deps required)
 function GUI.Init(deps)
+    print("[GUI] Initializing...")
+
     deps = deps or {}
     Config = deps.Config
     Utils = deps.Utils
