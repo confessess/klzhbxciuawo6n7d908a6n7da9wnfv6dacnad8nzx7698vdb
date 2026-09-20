@@ -438,22 +438,14 @@ function Components.Dropdown(page, label, options, default, callback, order)
 
         local optCount = rebuild()
 
-        -- Get absolute positions
-        local boxPos = box.AbsolutePosition
-        local boxSize = box.AbsoluteSize
-        local hostPos = ContentHost.AbsolutePosition
-
-        -- Calculate position relative to ContentHost (parent of popup)
-        local relX = boxPos.X - hostPos.X
-        local relY = boxPos.Y - hostPos.Y + boxSize.Y + 6
-
-        -- Position popup relative to page
-        popupContainer.Position = UDim2.new(0, relX, 0, relY)
-        popupContainer.Size = UDim2.new(0, boxSize.X, 0, 0)
+        -- Position popupContainer relative to frame (its parent)
+        -- Frame is 32px tall, so popup starts at Y=38 (32 + 6px gap)
+        popupContainer.Position = UDim2.new(0.45, 0, 0, 38)
+        popupContainer.Size = UDim2.new(0.55, 0, 0, 0)
         popupContainer.Visible = true
 
         local listHeight = math.min(optCount * 30 + 10, 280)
-        popupContainer.Size = UDim2.new(0, boxSize.X, 0, listHeight)
+        popupContainer.Size = UDim2.new(0.55, 0, 0, listHeight)
 
         expanded = true
 
