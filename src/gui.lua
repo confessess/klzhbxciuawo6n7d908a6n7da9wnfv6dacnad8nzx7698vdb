@@ -444,6 +444,8 @@ function Components.Dropdown(page, label, options, default, callback, order)
         popupContainer.Size = UDim2.new(0.55, 0, 0, 0)
         popupContainer.Visible = true
 
+        print("[DROPDOWN OPEN] " .. label .. " position: " .. tostring(popupContainer.Position))
+
         local listHeight = math.min(optCount * 30 + 10, 280)
         popupContainer.Size = UDim2.new(0.55, 0, 0, listHeight)
 
