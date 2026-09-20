@@ -1,5 +1,5 @@
 -- ============================================================
--- RIVALS GUI - Product Faker Style with Icons
+-- RIVALS GUI - Product Faker Style with Icons (Standalone)
 -- ============================================================
 
 local TweenService = game:GetService("TweenService")
@@ -227,6 +227,156 @@ function Components.Toggle(page, label, default, callback, order)
     end)
 
     return {Set = function(v) state = v end, Get = function() return state end}
+end
+
+function Components.Dropdown(page, label, options, default, callback, order)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 32)
+    frame.BackgroundTransparency = 1
+    frame.LayoutOrder = order or 0
+    frame.ClipsDescendants = false
+    frame.Parent = page
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.4, 0, 0, 32)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = label
+    lbl.TextColor3 = Theme.Text
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 13
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+
+    local box = Instance.new("TextButton")
+    box.Size = UDim2.new(0.55, 0, 0, 28)
+    box.Position = UDim2.new(0.45, 0, 0, 2)
+    box.BackgroundColor3 = Theme.Element
+    box.BorderSizePixel = 0
+    box.Text = ""
+    box.AutoButtonColor = false
+    box.Parent = frame
+    corner(box, 6)
+    stroke(box)
+    gradient(box)
+
+    local valueLbl = Instance.new("TextLabel")
+    valueLbl.Size = UDim2.new(1, -30, 1, 0)
+    valueLbl.Position = UDim2.new(0, 10, 0, 0)
+    valueLbl.BackgroundTransparency = 1
+    valueLbl.Text = tostring(default or "Select...")
+    valueLbl.TextColor3 = Theme.TextDim
+    valueLbl.Font = Enum.Font.GothamMedium
+    valueLbl.TextSize = 12
+    valueLbl.TextXAlignment = Enum.TextXAlignment.Left
+    valueLbl.Parent = box
+
+    local arrow = Instance.new("TextLabel")
+    arrow.Size = UDim2.fromOffset(16, 16)
+    arrow.Position = UDim2.new(1, -22, 0.5, -8)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▼"
+    arrow.TextColor3 = Theme.TextDim
+    arrow.Font = Enum.Font.GothamBold
+    arrow.TextSize = 8
+    arrow.Parent = box
+
+    -- Dropdown list - positioned BELOW with gap to prevent overlap
+    local list = Instance.new("ScrollingFrame")
+    list.Size = UDim2.new(0.55, 0, 0, 0)
+    list.Position = UDim2.new(0.45, 0, 0, 36)
+    list.BackgroundColor3 = Theme.Background
+    list.BorderSizePixel = 0
+    list.ClipsDescendants = true
+    list.Visible = false
+    list.ZIndex = 100
+    list.ScrollBarThickness = 4
+    list.ScrollBarImageColor3 = Theme.Stroke
+    list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    list.CanvasSize = UDim2.fromScale(0, 0)
+    list.Parent = frame
+    corner(list, 6)
+    stroke(list)
+
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 2)
+    listLayout.Parent = list
+
+    local listPad = Instance.new("UIPadding")
+    listPad.PaddingTop = UDim.new(0, 4)
+    listPad.PaddingBottom = UDim.new(0, 4)
+    listPad.PaddingLeft = UDim.new(0, 4)
+    listPad.PaddingRight = UDim.new(0, 4)
+    listPad.Parent = list
+
+    local expanded = false
+    local currentValue = default
+
+    local function getOptions()
+        if type(options) == "function" then
+            return options()
+        end
+        return options
+    end
+
+    local function rebuild()
+        for _, child in ipairs(list:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+        local opts = getOptions()
+        for i, opt in ipairs(opts) do
+            local optBtn = Instance.new("TextButton")
+            optBtn.Size = UDim2.new(1, 0, 0, 28)
+            optBtn.BackgroundColor3 = Theme.Element
+            optBtn.BorderSizePixel = 0
+            optBtn.Text = ""
+            optBtn.AutoButtonColor = false
+            optBtn.LayoutOrder = i
+            optBtn.ZIndex = 101
+            optBtn.Parent = list
+            corner(optBtn, 4)
+
+            local optLbl = Instance.new("TextLabel")
+            optLbl.Size = UDim2.new(1, -16, 1, 0)
+            optLbl.Position = UDim2.new(0, 8, 0, 0)
+            optLbl.BackgroundTransparency = 1
+            optLbl.Text = tostring(opt)
+            optLbl.TextColor3 = (currentValue == opt) and Theme.Yellow or Theme.TextDim
+            optLbl.Font = Enum.Font.GothamMedium
+            optLbl.TextSize = 12
+            optLbl.TextXAlignment = Enum.TextXAlignment.Left
+            optLbl.ZIndex = 102
+            optLbl.Parent = optBtn
+
+            optBtn.MouseButton1Click:Connect(function()
+                local ok, err = pcall(function()
+                    currentValue = opt
+                    valueLbl.Text = tostring(opt)
+                    if callback then callback(opt) end
+                    expanded = false
+                    tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
+                    task.delay(0.15, function() list.Visible = false end)
+                end)
+                if not ok then warn("[GUI] Dropdown error: " .. tostring(err)) end
+            end)
+        end
+    end
+
+    box.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        if expanded then
+            rebuild()
+            list.Visible = true
+            local opts = getOptions()
+            local listHeight = math.min(#opts * 30 + 8, 180)
+            tween(list, {Size = UDim2.new(0.55, 0, 0, listHeight)})
+        else
+            tween(list, {Size = UDim2.new(0.55, 0, 0, 0)})
+            task.delay(0.15, function() list.Visible = false end)
+        end
+    end)
+
+    return {Set = function(v) currentValue = v valueLbl.Text = tostring(v) end, Get = function() return currentValue end}
 end
 
 function Components.Slider(page, label, min, max, default, callback, order)
@@ -723,7 +873,7 @@ local function build()
     MainFrame.Name = "Main"
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.Size = UDim2.fromOffset(517, 377)
+    MainFrame.Size = UDim2.fromOffset(580, 440)
     MainFrame.BackgroundColor3 = Theme.Background
     MainFrame.BorderSizePixel = 0
     MainFrame.Visible = false
@@ -763,9 +913,9 @@ local function build()
     end)
 
     TabBar = Instance.new("Frame")
-    TabBar.Size = UDim2.new(0, 489, 0, 24)
+    TabBar.Size = UDim2.new(0, 550, 0, 28)
     TabBar.AnchorPoint = Vector2.new(0.5, 0.5)
-    TabBar.Position = UDim2.new(0.5, 0, 0.143, 0)
+    TabBar.Position = UDim2.new(0.5, 0, 0.13, 0)
     TabBar.BackgroundTransparency = 1
     TabBar.BorderSizePixel = 0
     TabBar.Parent = MainFrame
@@ -777,9 +927,9 @@ local function build()
     tabLayout.Parent = TabBar
 
     ContentHost = Instance.new("Frame")
-    ContentHost.Size = UDim2.new(0, 489, 0, 286)
+    ContentHost.Size = UDim2.new(0, 550, 0, 340)
     ContentHost.AnchorPoint = Vector2.new(0.5, 0.5)
-    ContentHost.Position = UDim2.new(0.5, 0, 0.586, 0)
+    ContentHost.Position = UDim2.new(0.5, 0, 0.57, 0)
     ContentHost.BackgroundTransparency = 1
     ContentHost.ClipsDescendants = true
     ContentHost.Parent = MainFrame
@@ -829,7 +979,9 @@ function GUI.Cleanup()
     if PreviewGui then PreviewGui:Destroy() end
 end
 
+-- Standalone init (no external deps required)
 function GUI.Init(deps)
+    deps = deps or {}
     Config = deps.Config
     Utils = deps.Utils
     Core = deps.Core

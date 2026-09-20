@@ -55,7 +55,7 @@ function Core.Unload()
         pcall(function() c:Disconnect() end)
     end
     table.clear(Core.Connections)
-    for _, name in ipairs({"Teleport", "Misc", "World", "Player", "Skins", "Combat", "ESP", "GUI"}) do
+    for _, name in ipairs({"Teleport", "Misc", "World", "Player", "Skins", "Combat", "Visuals", "GUI"}) do
         local mod = Core[name]
         if mod and mod.Cleanup then pcall(mod.Cleanup) end
     end
@@ -68,7 +68,7 @@ _G.__rivals_core = Core
 Core.Config   = loadModule("config")
 Core.Utils    = loadModule("utils")
 Core.GUI      = loadModule("gui")
-Core.ESP      = loadModule("esp")
+Core.Visuals  = loadModule("visuals")
 Core.Combat   = loadModule("combat")
 Core.Skins    = loadModule("skins")
 Core.Player   = loadModule("player")
@@ -78,7 +78,7 @@ Core.Teleport = loadModule("teleport")
 
 local deps = { Config = Core.Config, Utils = Core.Utils, GUI = Core.GUI, Core = Core }
 
-for _, name in ipairs({"Utils", "GUI", "ESP", "Combat", "Skins", "Player", "World", "Misc", "Teleport"}) do
+for _, name in ipairs({"Utils", "GUI", "Visuals", "Combat", "Skins", "Player", "World", "Misc", "Teleport"}) do
     local mod = Core[name]
     if mod and mod.Init then
         pcall(function() mod.Init(deps) end)
@@ -88,7 +88,7 @@ end
 local RunService = game:GetService("RunService")
 track(RunService.RenderStepped:Connect(function(dt)
     if Core.Unloaded then return end
-    if Core.ESP and Core.ESP.Update then pcall(Core.ESP.Update, dt) end
+    if Core.Visuals and Core.Visuals.Update then pcall(Core.Visuals.Update, dt) end
     if Core.Combat and Core.Combat.Update then pcall(Core.Combat.Update, dt) end
     if Core.Skins and Core.Skins.Update then pcall(Core.Skins.Update, dt) end
     if Core.Player and Core.Player.Update then pcall(Core.Player.Update, dt) end
@@ -100,7 +100,7 @@ end))
 task.spawn(function()
     while not Core.Unloaded do
         task.wait(0.15)
-        if Core.ESP and Core.ESP.Refresh then pcall(Core.ESP.Refresh) end
+        if Core.Visuals and Core.Visuals.Refresh then pcall(Core.Visuals.Refresh) end
     end
 end)
 
